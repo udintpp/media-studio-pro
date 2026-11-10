@@ -38,7 +38,23 @@
   - `3GP` (Mobile Format Ringan)
   - `GIF Animasi Video` (Cuplikan video bergerak transparan)
 
-### 3. ✂️ Potong dan Sambung (Video Cutter & Concatenator)
+### 3. ⚡ Adobe After Effects Studio Pro (Motion Graphics & VFX)
+- **Keyframe Animation Engine:** Pasang titik keyframe dinamis untuk **Posisi (X, Y)**, **Skala (Scale)**, **Rotasi (Rotation)**, dan **Opasitas (Opacity)** di timeline. Interpolasi kurva dengan mode **Easy-Ease**, **Linear**, **Ease-In**, dan **Ease-Out**.
+- **🌟 Optical Deep Glow:** Pendaran cahaya optik neon pekat (*radiance glow*) dengan ambang batas dinamis dan radius difusi bioskop.
+- **⚡ RGB Split & Glitch:** Aberasi kromatik kanal Red dan Cyan terpisah dengan horizontal scanlines cyberpunk.
+- **📳 Camera Wiggle Shake (`wiggle(freq, amp)`):** Simulasi goyangan kamera genggam organik natural dengan pengaturan frekuensi (Hz) dan amplitudo getaran.
+- **☀️ Anamorphic Lens Flare Sinematik:** Kilatan lensa bioskop Hollywood dengan streak horizontal cyan/emas, cincin refleksi optik sekunder, dan hotspot glare.
+- **✨ Particle World Simulation:**
+  - *Sparks & Embers:* Percikan api dan bara melayang dinamis dengan gravitasi fisik.
+  - *Rain & Mist:* Simulasi atmosferik tetesan hujan deras dengan kabut.
+  - *Snow Drift:* Butiran salju melayang lembut dengan efek turbulensi angin acak.
+  - *Bokeh Orbs:* Lingkaran bias cahaya bokeh aperture lebar dengan kedalaman ruang optik.
+- **🎞️ 35mm Celluloid Film Grain:** Tekstur butiran film analog 35mm dengan getaran eksposur halus.
+- **🔤 Kinetic Motion Graphics Typography:** Teks bergerak gaya Typewriter, Kinetic Pop Zoom, Neon Pulse, dan Glitch.
+- **🎵 Audio Waveform Spectrum:** Visualisasi gelombang frekuensi suara neon reaktif terhadap musik.
+- **🎭 Layer Blending Modes:** Normal, Add (Linear Dodge), Screen, Multiply, Overlay, Lighten, Darken, Difference / XOR.
+
+### 4. ✂️ Potong dan Sambung (Video Cutter & Concatenator)
 - **Potong (Trim):** Pemotongan video presisi hingga milidetik dengan slider dua arah dan seekbar interaktif.
 - **Sambung (Merge/Concat):** Gabungkan beberapa klip video berbeda urutan menjadi satu video utuh tanpa penurunan kualitas.
 

@@ -1,5 +1,6 @@
 package com.udintpp.mediastudio.ui.photo
 
+import android.content.Intent
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
@@ -12,6 +13,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.udintpp.mediastudio.R
+import com.udintpp.mediastudio.ui.vfx.AfterEffectsStudioActivity
 import com.udintpp.mediastudio.data.model.AspectRatio
 import com.udintpp.mediastudio.data.model.ExportResolution
 import com.udintpp.mediastudio.data.model.FilterPreset
@@ -135,6 +137,13 @@ class PhotoEditorActivity : AppCompatActivity() {
         binding.btnToolFilter.setOnClickListener { selectTool(ActiveTool.FILTER) }
         binding.btnToolCrop.setOnClickListener { selectTool(ActiveTool.CROP) }
         binding.btnToolRotate.setOnClickListener { selectTool(ActiveTool.ROTATE) }
+        binding.btnToolAfterEffects.setOnClickListener {
+            val uri = intent.data ?: return@setOnClickListener
+            val intent = Intent(this, AfterEffectsStudioActivity::class.java).apply {
+                data = uri
+            }
+            startActivity(intent)
+        }
 
         // Slider change listener
         binding.sliderTool.addOnChangeListener { _, value, fromUser ->

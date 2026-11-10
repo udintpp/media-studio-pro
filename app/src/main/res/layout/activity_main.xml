@@ -259,6 +259,48 @@
                 </LinearLayout>
             </LinearLayout>
 
+            <!-- Card: After Effects Studio Pro -->
+            <LinearLayout
+                android:id="@+id/card_after_effects"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:background="@drawable/bg_card_studio"
+                android:gravity="center_vertical"
+                android:orientation="horizontal"
+                android:padding="16dp">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/ic_magic_wand"
+                    app:tint="@color/primary_light" />
+
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_marginStart="14dp"
+                    android:layout_weight="1"
+                    android:orientation="vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="After Effects Studio Pro"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Keyframe animasi, Optical Glow, RGB Glitch, Wiggle shake, Lens Flare, Partikel &amp; Motion Text"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+                </LinearLayout>
+            </LinearLayout>
+
             <!-- Card 3: Slideshow (Foto ke Video) -->
             <LinearLayout
                 android:id="@+id/card_slideshow"

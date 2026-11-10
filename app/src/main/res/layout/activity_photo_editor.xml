@@ -224,6 +224,15 @@
                 android:layout_height="wrap_content"
                 android:text="Rotasi"
                 android:textColor="@color/text_primary" />
+
+            <!-- Tool: After Effects Studio -->
+            <Button
+                android:id="@+id/btn_tool_after_effects"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⚡ After Effects"
+                android:textColor="@color/accent_cyan" />
         </LinearLayout>
     </HorizontalScrollView>
 

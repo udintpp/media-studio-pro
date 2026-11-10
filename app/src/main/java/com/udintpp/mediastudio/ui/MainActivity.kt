@@ -17,6 +17,7 @@ import com.udintpp.mediastudio.ui.cutter.VideoCutterConcatActivity
 import com.udintpp.mediastudio.ui.frame.FrameExtractorActivity
 import com.udintpp.mediastudio.ui.photo.PhotoEditorActivity
 import com.udintpp.mediastudio.ui.slideshow.SlideshowActivity
+import com.udintpp.mediastudio.ui.vfx.AfterEffectsStudioActivity
 import com.udintpp.mediastudio.ui.video.VideoEditorActivity
 import java.io.File
 import java.text.SimpleDateFormat
@@ -72,6 +73,16 @@ class MainActivity : AppCompatActivity() {
     private val pickVideoLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let {
             val intent = Intent(this, VideoEditorActivity::class.java).apply {
+                data = it
+            }
+            startActivity(intent)
+        }
+    }
+
+    // Gallery Picker for After Effects Studio (Photo or Video)
+    private val pickAfterEffectsLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            val intent = Intent(this, AfterEffectsStudioActivity::class.java).apply {
                 data = it
             }
             startActivity(intent)
@@ -137,6 +148,11 @@ class MainActivity : AppCompatActivity() {
         // Feature 2: Video Studio Pro
         binding.cardVideoEditor.setOnClickListener {
             pickVideoLauncher.launch("video/*")
+        }
+
+        // Feature: After Effects Studio Pro
+        binding.cardAfterEffects.setOnClickListener {
+            pickAfterEffectsLauncher.launch("*/*")
         }
 
         // Feature 3: Slideshow (Foto ke Video)

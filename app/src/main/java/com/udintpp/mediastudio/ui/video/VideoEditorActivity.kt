@@ -1,5 +1,6 @@
 package com.udintpp.mediastudio.ui.video
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -8,6 +9,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
+import com.udintpp.mediastudio.ui.vfx.AfterEffectsStudioActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -284,6 +286,14 @@ class VideoEditorActivity : AppCompatActivity() {
             binding.videoCropOverlay.chromaPreviewBitmap = null
             binding.layoutMarkedColorInfo.visibility = View.GONE
             Toast.makeText(this, "Pengaturan latar background video direset", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnOpenAfterEffects.setOnClickListener {
+            val uri = videoUri ?: return@setOnClickListener
+            val intent = Intent(this, AfterEffectsStudioActivity::class.java).apply {
+                data = uri
+            }
+            startActivity(intent)
         }
 
         binding.btnExportVideo4k.setOnClickListener {
