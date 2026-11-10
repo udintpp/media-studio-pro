@@ -201,10 +201,78 @@
                 android:layout_height="44dp"
                 android:layout_marginStart="4dp"
                 android:layout_weight="1"
-                android:text="🎯 Tandai Warna Transparan"
+                android:text="🎯 Pipet Warna Transparan"
                 android:textColor="@color/accent_amber"
                 android:textSize="11sp" />
         </LinearLayout>
+
+        <!-- Video BG Removal & Replacement Action Scroll -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:scrollbars="none">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_bg_green_screen"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:layout_marginEnd="4dp"
+                    android:text="🟢 Layar Hijau"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_bg_blue_screen"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:layout_marginEnd="4dp"
+                    android:text="🔵 Layar Biru"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_bg_replace_photo"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:layout_marginEnd="4dp"
+                    android:text="🖼️ Ganti BG Foto"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_bg_replace_video"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:layout_marginEnd="4dp"
+                    android:text="🎥 Ganti BG Video"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_bg_replace_color"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:layout_marginEnd="4dp"
+                    android:text="🎨 Ganti BG Warna"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_bg_pure_transparent"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="38dp"
+                    android:layout_marginEnd="4dp"
+                    android:text="✨ BG Transparan Murni"
+                    android:textSize="11sp" />
+            </LinearLayout>
+        </HorizontalScrollView>
 
         <!-- Feature Row 2: Rotate, Change Audio, Mute -->
         <LinearLayout

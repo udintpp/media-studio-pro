@@ -288,20 +288,28 @@ class PhotoCanvasView @JvmOverloads constructor(
         invalidate()
     }
 
+    // Checkerboard paint for transparent background areas
+    private val checkerboardPaint = Paint().apply {
+        shader = createCheckerboardShader(tileSize = 32)
+    }
+
+    private fun createCheckerboardShader(tileSize: Int): android.graphics.BitmapShader {
+        val size = tileSize * 2
+        val bmp = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888)
+        val c = Canvas(bmp)
+        val p1 = Paint().apply { color = Color.parseColor("#CBD5E1") } // Slate light gray
+        val p2 = Paint().apply { color = Color.parseColor("#F8FAFC") } // Clean white
+        c.drawRect(0f, 0f, tileSize.toFloat(), tileSize.toFloat(), p1)
+        c.drawRect(tileSize.toFloat(), 0f, size.toFloat(), tileSize.toFloat(), p2)
+        c.drawRect(0f, tileSize.toFloat(), tileSize.toFloat(), size.toFloat(), p2)
+        c.drawRect(tileSize.toFloat(), tileSize.toFloat(), size.toFloat(), size.toFloat(), p1)
+        return android.graphics.BitmapShader(bmp, android.graphics.Shader.TileMode.REPEAT, android.graphics.Shader.TileMode.REPEAT)
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
 
-        // 1. Draw custom background color or background image if present
-        if (backgroundColorOverride != null) {
-            canvas.drawColor(backgroundColorOverride!!)
-        } else if (backgroundBitmap != null) {
-            val bg = backgroundBitmap!!
-            val src = Rect(0, 0, bg.width, bg.height)
-            val dst = Rect(0, 0, width, height)
-            canvas.drawBitmap(bg, src, dst, basePaint)
-        }
-
-        // 2. Draw base photo centered and aspect-fit
+        // 1. Calculate image bounding rect centered and aspect-fit
         baseBitmap?.let { bmp ->
             val bmpRatio = bmp.width.toFloat() / bmp.height.toFloat()
             val viewRatio = width.toFloat() / height.toFloat()
@@ -316,6 +324,21 @@ class PhotoCanvasView @JvmOverloads constructor(
                 currentDstRect.set(left, 0f, left + dstWidth, height.toFloat())
             }
 
+            // 2. Render background layer:
+            // If user explicitly chose a background color or image, draw it.
+            // Otherwise, render transparency checkerboard (papan catur abu-abu/putih) behind cutout!
+            if (backgroundColorOverride != null) {
+                canvas.drawRect(currentDstRect, Paint().apply { color = backgroundColorOverride!! })
+            } else if (backgroundBitmap != null) {
+                val bg = backgroundBitmap!!
+                val src = Rect(0, 0, bg.width, bg.height)
+                canvas.drawBitmap(bg, src, currentDstRect, basePaint)
+            } else {
+                // Pure transparent background mode
+                canvas.drawRect(currentDstRect, checkerboardPaint)
+            }
+
+            // 3. Draw base photo
             canvas.drawBitmap(bmp, null, currentDstRect, basePaint)
         }
 

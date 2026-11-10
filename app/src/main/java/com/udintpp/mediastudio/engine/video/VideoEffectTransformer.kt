@@ -29,6 +29,9 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.callbackFlow
 import java.io.File
 
+import com.udintpp.mediastudio.data.model.VideoExportFormat
+import kotlinx.coroutines.launch
+
 @OptIn(UnstableApi::class)
 object VideoEffectTransformer {
 
@@ -39,7 +42,8 @@ object VideoEffectTransformer {
     }
 
     /**
-     * Transforms video with trimming, rotation, brightness/contrast, audio swap/mute, and export resolution up to 4K.
+     * Transforms video with trimming, rotation, brightness/contrast, audio swap/mute, chroma key background removal/replacement,
+     * and export resolution up to 4K across MP4, MOV, WEBM, MKV, AVI, 3GP, and GIF formats.
      */
     fun transformVideo(
         context: Context,
@@ -51,9 +55,42 @@ object VideoEffectTransformer {
         adjustments: ImageAdjustments = ImageAdjustments(),
         audioConfig: AudioMixConfig = AudioMixConfig(),
         resolution: ExportResolution = ExportResolution.FHD_1080P,
-        cropRectNormalized: android.graphics.RectF? = null
+        cropRectNormalized: android.graphics.RectF? = null,
+        exportFormat: VideoExportFormat = VideoExportFormat.MP4,
+        keyColor: Int? = null,
+        chromaTolerance: Float = 0.35f,
+        replacementType: VideoBgReplacementType = VideoBgReplacementType.TRANSPARENT,
+        replacementBgBitmap: android.graphics.Bitmap? = null,
+        replacementBgColor: Int? = null
     ): Flow<TransformState> = callbackFlow {
         try {
+            // Handle GIF Animated Video Export with full alpha transparency
+            if (exportFormat == VideoExportFormat.GIF) {
+                launch {
+                    trySend(TransformState.Progress(10))
+                    val gifRes = VideoChromaKeyEngine.exportTransparentVideoGif(
+                        context = context,
+                        videoUri = inputUri,
+                        outputFile = outputFile,
+                        trimStartMs = trimStartMs,
+                        trimEndMs = trimEndMs,
+                        keyColor = keyColor,
+                        tolerance = chromaTolerance,
+                        resolution = resolution,
+                        onProgress = { pct -> trySend(TransformState.Progress(pct)) }
+                    )
+                    if (gifRes.isSuccess) {
+                        trySend(TransformState.Success(outputFile))
+                        close()
+                    } else {
+                        trySend(TransformState.Error(gifRes.exceptionOrNull()?.message ?: "Gagal membuat animasi GIF"))
+                        close()
+                    }
+                }
+                awaitClose { }
+                return@callbackFlow
+            }
+
             // Build MediaItem with clipping if specified
             val mediaItemBuilder = MediaItem.Builder().setUri(inputUri)
             if (trimEndMs > trimStartMs && trimEndMs > 0) {
@@ -120,11 +157,11 @@ object VideoEffectTransformer {
             // Transformer setup
             val transformerBuilder = Transformer.Builder(context)
 
-            // Configure target resolution and video MIME (H.264 / H.265 for 4K)
-            val videoMime = if (resolution == ExportResolution.UHD_4K) {
-                MimeTypes.VIDEO_H265
-            } else {
-                MimeTypes.VIDEO_H264
+            // Configure target resolution and video MIME (VP9 for WebM, H.265 for 4K, H.264 default)
+            val videoMime = when {
+                exportFormat == VideoExportFormat.WEBM -> MimeTypes.VIDEO_VP9
+                resolution == ExportResolution.UHD_4K -> MimeTypes.VIDEO_H265
+                else -> MimeTypes.VIDEO_H264
             }
 
             val transReqBuilder = TransformationRequest.Builder()

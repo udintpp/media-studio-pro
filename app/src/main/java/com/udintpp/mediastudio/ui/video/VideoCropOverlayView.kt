@@ -122,8 +122,39 @@ class VideoCropOverlayView @JvmOverloads constructor(
         )
     }
 
+    var chromaPreviewBitmap: Bitmap? = null
+        set(value) {
+            field = value
+            invalidate()
+        }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
+
+        // Draw Floating Live Chroma Preview Thumbnail if active
+        chromaPreviewBitmap?.let { bmp ->
+            val previewW = 320f
+            val previewH = (previewW / bmp.width.toFloat()) * bmp.height.toFloat()
+            val left = width - previewW - 24f
+            val top = 24f
+            val previewRect = RectF(left, top, left + previewW, top + previewH)
+
+            val bgPaint = Paint().apply {
+                color = Color.parseColor("#E0000000")
+                style = Paint.Style.FILL
+            }
+            canvas.drawRoundRect(previewRect, 16f, 16f, bgPaint)
+            canvas.drawBitmap(bmp, null, previewRect, null)
+            canvas.drawRoundRect(previewRect, 16f, 16f, borderPaint)
+
+            val textP = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                textSize = 22f
+                isFakeBoldText = true
+                setShadowLayer(4f, 0f, 2f, Color.BLACK)
+            }
+            canvas.drawText("Pratinjau BG", left + 12f, top + 28f, textP)
+        }
 
         // Draw Crop Box
         if (isCropModeActive && !cropRect.isEmpty) {

@@ -11,12 +11,34 @@
 
 ## 🌟 Fitur Utama & Fungsionalitas
 
-### 1. ✂️ Hapus & Ganti Background (Photo & Video)
-- **Foto:** Deteksi warna tepi & ambang warna dinamis untuk menghasilkan potongan gambar transparan (PNG).
-- **Ganti Background:** Ganti latar belakang dengan warna solid (Putih, Hitam, Neon, dll), gradasi, atau gambar custom dari galeri Anda.
-- **Video:** Fitur Chroma Key untuk mengganti background video (Green/Blue screen).
+### 1. ✂️ Hapus & Ganti Background (Photo & Video Transparan Penuh)
+- **Foto:** Saat background foto dihapus (AI Deteksi Orang Presisi, Flood Fill, Pipet Warna, atau Kuas Hapus), latar belakang otomatis menjadi **transparan murni (100% Alpha)** dan menampilkan pola papan catur (*transparency checkerboard*). Latar belakang pengganti HANYA muncul jika pengguna memilih ganti background.
+- **Ganti Background Foto:** Ganti latar belakang dengan warna solid (Putih, Hitam, Neon, Studio), atau foto custom dari galeri. Tombol **✨ BG Transparan Murni** mengembalikan ke transparan kapan saja.
+- **Video Chroma Key Transparan:** Tandai warna latar video dengan Pipet atau preset Layar Hijau (*Green Screen*) / Layar Biru (*Blue Screen*) untuk dihapus jadi transparan (WebM VP9 dengan Alpha / Animated GIF).
+- **Ganti Background Video:** Dukungan mengganti latar belakang video dengan Foto dari Galeri, Video lain dari Galeri, atau Warna Solid baru, lengkap dengan thumbnail pratinjau langsung (*Live Preview*).
 
-### 2. ✂️ Potong dan Sambung (Video Cutter & Concatenator)
+### 2. 📁 Format Export Lengkap (Foto & Video)
+- **Format Foto Terlengkap:**
+  - `PNG` (Lossless, Mendukung Transparansi Penuh)
+  - `JPG / JPEG` (Standar Foto)
+  - `WEBP` (Modern Google Web, Transparan & Hemat Ukuran)
+  - `GIF` (Grafis / Animasi Transparan)
+  - `ICO` (Windows Icon Format 32-bit ARGB Transparan)
+  - `PSD` (Adobe Photoshop Document Multi-Channel Alpha)
+  - `PCX` (ZSoft PC Paintbrush 24-bit RGB)
+  - `SVG & AVG` (Scalable Vector Graphics XML & Android Vector Drawable XML)
+  - `BMP` (Windows Bitmap 32-bit ARGB)
+  - `TIFF` (Tagged Image File Format Resolusi Tinggi)
+- **Format Video Terlengkap:**
+  - `MP4` (Standar H.264 / H.265 Ultra HD hingga 4K)
+  - `MOV` (Apple QuickTime Format)
+  - `WEBM` (VP8 / VP9, Mendukung Video Transparan)
+  - `MKV` (Matroska Multimedia Container)
+  - `AVI` (Audio Video Interleave)
+  - `3GP` (Mobile Format Ringan)
+  - `GIF Animasi Video` (Cuplikan video bergerak transparan)
+
+### 3. ✂️ Potong dan Sambung (Video Cutter & Concatenator)
 - **Potong (Trim):** Pemotongan video presisi hingga milidetik dengan slider dua arah dan seekbar interaktif.
 - **Sambung (Merge/Concat):** Gabungkan beberapa klip video berbeda urutan menjadi satu video utuh tanpa penurunan kualitas.
 

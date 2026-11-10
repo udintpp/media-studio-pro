@@ -233,6 +233,8 @@ class PhotoEditorActivity : AppCompatActivity() {
         addSubButton("🧠 AI Hapus BG (Deteksi Orang Presisi)") {
             originalBitmap?.let { src ->
                 binding.photoCanvas.brushMode = BrushMode.NONE
+                binding.photoCanvas.backgroundColorOverride = null
+                binding.photoCanvas.backgroundBitmap = null
                 Toast.makeText(this, "AI sedang mendeteksi figur orang & pakaian secara presisi...", Toast.LENGTH_SHORT).show()
                 lifecycleScope.launch {
                     val result = BackgroundRemover.removeBackgroundAI(src, confidenceThreshold = 0.5f)
@@ -241,7 +243,7 @@ class PhotoEditorActivity : AppCompatActivity() {
                         if (transparentCutout != null) {
                             currentProcessedBitmap = transparentCutout.copy(Bitmap.Config.ARGB_8888, true)
                             binding.photoCanvas.baseBitmap = currentProcessedBitmap
-                            Toast.makeText(this@PhotoEditorActivity, "✅ Sukses! Figur orang & pakaian tetap utuh terlindungi.", Toast.LENGTH_LONG).show()
+                            Toast.makeText(this@PhotoEditorActivity, "✅ Sukses! Background dihapus jadi transparan murni.", Toast.LENGTH_LONG).show()
                         }
                     } else {
                         // Fallback to Smart Flood Fill if AI encountered error
@@ -257,37 +259,26 @@ class PhotoEditorActivity : AppCompatActivity() {
         addSubButton("⚡ Flood Fill BG (Warna Tepi)") {
             originalBitmap?.let { src ->
                 binding.photoCanvas.brushMode = BrushMode.NONE
+                binding.photoCanvas.backgroundColorOverride = null
+                binding.photoCanvas.backgroundBitmap = null
                 Toast.makeText(this, "Memproses pemisahan background warna tepi...", Toast.LENGTH_SHORT).show()
                 lifecycleScope.launch(Dispatchers.Default) {
                     val transparentCutout = BackgroundRemover.removeBackgroundSmartColor(src, tolerance = 35f)
                     withContext(Dispatchers.Main) {
                         currentProcessedBitmap = transparentCutout.copy(Bitmap.Config.ARGB_8888, true)
                         binding.photoCanvas.baseBitmap = currentProcessedBitmap
-                        Toast.makeText(this@PhotoEditorActivity, "Background tepi dihapus (warna kulit & interior terlindungi)", Toast.LENGTH_SHORT).show()
+                        Toast.makeText(this@PhotoEditorActivity, "Background tepi dihapus jadi transparan", Toast.LENGTH_SHORT).show()
                     }
                 }
             }
-        }
-
-        addSubButton("🖌️ Kuas Pemulih (Restore)") {
-            binding.photoCanvas.brushMode = BrushMode.RESTORE
-            Toast.makeText(this, "Kuas Pemulih Aktif: Usapkan jari ke bagian orang/baju yang ingin dikembalikan utuh!", Toast.LENGTH_LONG).show()
-        }
-
-        addSubButton("🧹 Kuas Hapus (Eraser)") {
-            binding.photoCanvas.brushMode = BrushMode.ERASE
-            Toast.makeText(this, "Kuas Hapus Aktif: Usapkan jari ke bagian background yang ingin dibersihkan!", Toast.LENGTH_LONG).show()
-        }
-
-        addSubButton("✋ Mode Geser (Normal)") {
-            binding.photoCanvas.brushMode = BrushMode.NONE
-            Toast.makeText(this, "Mode sentuh normal (Geser & stiker)", Toast.LENGTH_SHORT).show()
         }
 
         addSubButton("🎯 Tandai Warna Transparan (Pipet)") {
             binding.photoCanvas.brushMode = BrushMode.NONE
             binding.photoCanvas.isCropModeActive = false
             binding.photoCanvas.isEyedropperActive = true
+            binding.photoCanvas.backgroundColorOverride = null
+            binding.photoCanvas.backgroundBitmap = null
             Toast.makeText(this, "Sentuh/geser jari pada warna foto yang ingin dijadikan transparan!", Toast.LENGTH_LONG).show()
 
             binding.photoCanvas.onColorSampled = { sampledColor ->
@@ -306,23 +297,47 @@ class PhotoEditorActivity : AppCompatActivity() {
             }
         }
 
+        addSubButton("✨ Jadikan BG Transparan (Hapus Pengganti)") {
+            binding.photoCanvas.backgroundColorOverride = null
+            binding.photoCanvas.backgroundBitmap = null
+            Toast.makeText(this, "Background diatur ke transparan murni (papan catur)", Toast.LENGTH_SHORT).show()
+        }
+
+        addSubButton("🖌️ Kuas Pemulih (Restore)") {
+            binding.photoCanvas.brushMode = BrushMode.RESTORE
+            Toast.makeText(this, "Kuas Pemulih Aktif: Usapkan jari ke bagian orang/baju yang ingin dikembalikan utuh!", Toast.LENGTH_LONG).show()
+        }
+
+        addSubButton("🧹 Kuas Hapus (Eraser)") {
+            binding.photoCanvas.brushMode = BrushMode.ERASE
+            Toast.makeText(this, "Kuas Hapus Aktif: Usapkan jari ke bagian background yang ingin dibersihkan!", Toast.LENGTH_LONG).show()
+        }
+
+        addSubButton("✋ Mode Geser (Normal)") {
+            binding.photoCanvas.brushMode = BrushMode.NONE
+            Toast.makeText(this, "Mode sentuh normal (Geser & stiker)", Toast.LENGTH_SHORT).show()
+        }
+
         addSubButton("⚪ Ganti BG Putih") {
             binding.photoCanvas.backgroundColorOverride = Color.WHITE
+            binding.photoCanvas.backgroundBitmap = null
         }
 
         addSubButton("⚫ Ganti BG Hitam") {
             binding.photoCanvas.backgroundColorOverride = Color.BLACK
+            binding.photoCanvas.backgroundBitmap = null
         }
 
         addSubButton("🟣 Ganti BG Neon") {
             binding.photoCanvas.backgroundColorOverride = Color.parseColor("#8B5CF6")
+            binding.photoCanvas.backgroundBitmap = null
         }
 
         addSubButton("🖼️ Ganti BG dari Galeri") {
             pickBgImageLauncher.launch("image/*")
         }
 
-        addSubButton("🔄 Reset BG") {
+        addSubButton("🔄 Reset Foto Awal") {
             binding.photoCanvas.brushMode = BrushMode.NONE
             binding.photoCanvas.isEyedropperActive = false
             binding.photoCanvas.isCropModeActive = false
@@ -417,17 +432,21 @@ class PhotoEditorActivity : AppCompatActivity() {
 
     private fun showExportDialog() {
         val base = binding.photoCanvas.baseBitmap ?: return
-        Export4KDialog(this) { resolution ->
-            Toast.makeText(this, "Mengekspor gambar dalam resolusi ${resolution.label}...", Toast.LENGTH_SHORT).show()
+        com.udintpp.mediastudio.ui.dialog.ExportMediaDialog.forPhoto(this) { resolution, format, quality ->
+            Toast.makeText(this, "Mengekspor foto ${resolution.label} (${format.displayName})...", Toast.LENGTH_SHORT).show()
             lifecycleScope.launch {
                 val result = PhotoExporter.exportPhoto(
                     context = this@PhotoEditorActivity,
                     baseBitmap = base,
                     stickers = binding.photoCanvas.stickers,
-                    resolution = resolution
+                    resolution = resolution,
+                    format = format,
+                    quality = quality,
+                    backgroundBitmap = binding.photoCanvas.backgroundBitmap,
+                    backgroundColorOverride = binding.photoCanvas.backgroundColorOverride
                 )
                 if (result.isSuccess) {
-                    Toast.makeText(this@PhotoEditorActivity, "✅ Berhasil disimpan ke Galeri (${resolution.label})!", Toast.LENGTH_LONG).show()
+                    Toast.makeText(this@PhotoEditorActivity, "✅ Berhasil disimpan (${format.extension.uppercase()} ${resolution.label})!", Toast.LENGTH_LONG).show()
                 } else {
                     Toast.makeText(this@PhotoEditorActivity, "Gagal mengekspor: ${result.exceptionOrNull()?.message}", Toast.LENGTH_LONG).show()
                 }

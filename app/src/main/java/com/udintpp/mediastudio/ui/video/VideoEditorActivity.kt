@@ -45,6 +45,50 @@ class VideoEditorActivity : AppCompatActivity() {
         }
     }
 
+    private var activeKeyColor: Int? = null
+    private var chromaTolerance: Float = 0.35f
+    private var bgReplacementType = com.udintpp.mediastudio.engine.video.VideoBgReplacementType.TRANSPARENT
+    private var replacementBgBitmap: android.graphics.Bitmap? = null
+    private var replacementBgColor: Int? = null
+
+    // Pick replacement photo for video background
+    private val pickBgPhotoLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            lifecycleScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                try {
+                    val stream = contentResolver.openInputStream(it)
+                    val bmp = android.graphics.BitmapFactory.decodeStream(stream)
+                    stream?.close()
+                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        if (bmp != null) {
+                            replacementBgBitmap = bmp
+                            replacementBgColor = null
+                            bgReplacementType = com.udintpp.mediastudio.engine.video.VideoBgReplacementType.PHOTO
+                            binding.layoutMarkedColorInfo.visibility = View.VISIBLE
+                            binding.tvSampledColorCode.text = "Latar Video Diganti: Foto Galeri"
+                            updateChromaPreview()
+                            Toast.makeText(this@VideoEditorActivity, "Background video diganti dengan foto dari galeri!", Toast.LENGTH_SHORT).show()
+                        }
+                    }
+                } catch (e: Exception) {
+                    withContext(kotlinx.coroutines.Dispatchers.Main) {
+                        Toast.makeText(this@VideoEditorActivity, "Gagal memuat foto background: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+    }
+
+    // Pick replacement video for video background
+    private val pickBgVideoLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let {
+            bgReplacementType = com.udintpp.mediastudio.engine.video.VideoBgReplacementType.VIDEO
+            binding.layoutMarkedColorInfo.visibility = View.VISIBLE
+            binding.tvSampledColorCode.text = "Latar Video Diganti: Video Latar Baru"
+            Toast.makeText(this, "Background video diganti dengan video dari galeri!", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityVideoEditorBinding.inflate(layoutInflater)
@@ -154,17 +198,91 @@ class VideoEditorActivity : AppCompatActivity() {
         }
 
         binding.videoCropOverlay.onColorPicked = { sampledColor ->
+            activeKeyColor = sampledColor
             val hex = String.format("#%06X", 0xFFFFFF and sampledColor)
             binding.layoutMarkedColorInfo.visibility = View.VISIBLE
             binding.viewSampledColorPreview.setBackgroundColor(sampledColor)
             binding.tvSampledColorCode.text = "Warna Ditandai: $hex (Transparan)"
             binding.videoCropOverlay.isEyedropperActive = false
-            Toast.makeText(this, "Warna $hex ditandai untuk dijadikan transparan saat export!", Toast.LENGTH_LONG).show()
+            updateChromaPreview()
+            Toast.makeText(this, "Warna $hex ditandai untuk dihapus jadi transparan!", Toast.LENGTH_LONG).show()
+        }
+
+        // Video Background Tools
+        binding.btnBgGreenScreen.setOnClickListener {
+            activeKeyColor = android.graphics.Color.GREEN
+            binding.layoutMarkedColorInfo.visibility = View.VISIBLE
+            binding.viewSampledColorPreview.setBackgroundColor(android.graphics.Color.GREEN)
+            binding.tvSampledColorCode.text = "Layar Hijau Ditandai (Transparan)"
+            updateChromaPreview()
+            Toast.makeText(this, "Preset Layar Hijau aktif (akan dihapus jadi transparan)", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnBgBlueScreen.setOnClickListener {
+            activeKeyColor = android.graphics.Color.BLUE
+            binding.layoutMarkedColorInfo.visibility = View.VISIBLE
+            binding.viewSampledColorPreview.setBackgroundColor(android.graphics.Color.BLUE)
+            binding.tvSampledColorCode.text = "Layar Biru Ditandai (Transparan)"
+            updateChromaPreview()
+            Toast.makeText(this, "Preset Layar Biru aktif (akan dihapus jadi transparan)", Toast.LENGTH_SHORT).show()
+        }
+
+        binding.btnBgReplacePhoto.setOnClickListener {
+            if (activeKeyColor == null) {
+                activeKeyColor = android.graphics.Color.GREEN // Default key to green if not sampled
+            }
+            pickBgPhotoLauncher.launch("image/*")
+        }
+
+        binding.btnBgReplaceVideo.setOnClickListener {
+            if (activeKeyColor == null) {
+                activeKeyColor = android.graphics.Color.GREEN
+            }
+            pickBgVideoLauncher.launch("video/*")
+        }
+
+        binding.btnBgReplaceColor.setOnClickListener {
+            val colors = arrayOf("⚪ Putih Bersih", "⚫ Hitam Elegan", "🔵 Studio Navy", "🟣 Neon Ungu", "🔴 Studio Merah")
+            val colorVals = intArrayOf(
+                android.graphics.Color.WHITE,
+                android.graphics.Color.BLACK,
+                android.graphics.Color.parseColor("#0F172A"),
+                android.graphics.Color.parseColor("#8B5CF6"),
+                android.graphics.Color.parseColor("#EF4444")
+            )
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Pilih Warna Background Baru")
+                .setItems(colors) { _, which ->
+                    if (activeKeyColor == null) activeKeyColor = android.graphics.Color.GREEN
+                    bgReplacementType = com.udintpp.mediastudio.engine.video.VideoBgReplacementType.SOLID_COLOR
+                    replacementBgColor = colorVals[which]
+                    replacementBgBitmap = null
+                    binding.layoutMarkedColorInfo.visibility = View.VISIBLE
+                    binding.tvSampledColorCode.text = "Latar Video Diganti: ${colors[which]}"
+                    updateChromaPreview()
+                    Toast.makeText(this, "Background diganti ke ${colors[which]}", Toast.LENGTH_SHORT).show()
+                }
+                .show()
+        }
+
+        binding.btnBgPureTransparent.setOnClickListener {
+            bgReplacementType = com.udintpp.mediastudio.engine.video.VideoBgReplacementType.TRANSPARENT
+            replacementBgBitmap = null
+            replacementBgColor = null
+            binding.layoutMarkedColorInfo.visibility = View.VISIBLE
+            binding.tvSampledColorCode.text = "Latar Video: Transparan Murni (Alpha)"
+            updateChromaPreview()
+            Toast.makeText(this, "Background video diatur transparan penuh", Toast.LENGTH_SHORT).show()
         }
 
         binding.btnResetColorKey.setOnClickListener {
+            activeKeyColor = null
+            bgReplacementType = com.udintpp.mediastudio.engine.video.VideoBgReplacementType.TRANSPARENT
+            replacementBgBitmap = null
+            replacementBgColor = null
+            binding.videoCropOverlay.chromaPreviewBitmap = null
             binding.layoutMarkedColorInfo.visibility = View.GONE
-            Toast.makeText(this, "Tanda warna transparan direset", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Pengaturan latar background video direset", Toast.LENGTH_SHORT).show()
         }
 
         binding.btnExportVideo4k.setOnClickListener {
@@ -172,23 +290,51 @@ class VideoEditorActivity : AppCompatActivity() {
         }
     }
 
+    private fun updateChromaPreview() {
+        val uri = videoUri ?: return
+        val key = activeKeyColor ?: run {
+            binding.videoCropOverlay.chromaPreviewBitmap = null
+            return
+        }
+        lifecycleScope.launch {
+            val frame = binding.videoCropOverlay.currentVideoFrameBitmap ?: run {
+                val currentMs = player?.currentPosition ?: 0L
+                val frameRes = com.udintpp.mediastudio.engine.video.VideoFrameExtractor.extractFrameAt(this@VideoEditorActivity, uri, currentMs)
+                frameRes.getOrNull()
+            }
+            if (frame != null) {
+                binding.videoCropOverlay.currentVideoFrameBitmap = frame
+                val preview = com.udintpp.mediastudio.engine.video.VideoChromaKeyEngine.processFrame(
+                    frame = frame,
+                    keyColor = key,
+                    tolerance = chromaTolerance,
+                    replacementType = bgReplacementType,
+                    replacementBgBitmap = replacementBgBitmap,
+                    replacementBgColor = replacementBgColor,
+                    drawCheckerboardIfTransparent = true
+                )
+                binding.videoCropOverlay.chromaPreviewBitmap = preview
+            }
+        }
+    }
+
     private fun showExportDialog() {
-        Export4KDialog(this) { resolution ->
-            startExport(resolution)
+        com.udintpp.mediastudio.ui.dialog.ExportMediaDialog.forVideo(this) { resolution, format ->
+            startExport(resolution, format)
         }.show()
     }
 
-    private fun startExport(resolution: ExportResolution) {
+    private fun startExport(resolution: ExportResolution, format: com.udintpp.mediastudio.data.model.VideoExportFormat) {
         val uri = videoUri ?: return
         player?.pause()
 
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val outputDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "MediaStudioPro")
         if (!outputDir.exists()) outputDir.mkdirs()
-        val outputFile = File(outputDir, "MediaStudio_Video_${resolution.name}_$timeStamp.mp4")
+        val outputFile = File(outputDir, "MediaStudio_Video_${resolution.name}_$timeStamp.${format.extension}")
 
         binding.layoutExportProgress.visibility = View.VISIBLE
-        binding.tvProgressPercent.text = "Memproses video ${resolution.label}..."
+        binding.tvProgressPercent.text = "Memproses video ${resolution.label} (${format.displayName})..."
 
         val cropNorm = if (binding.videoCropOverlay.isCropModeActive || !binding.videoCropOverlay.cropRect.isEmpty) {
             binding.videoCropOverlay.getNormalizedCropRect()
@@ -207,7 +353,13 @@ class VideoEditorActivity : AppCompatActivity() {
                 adjustments = adjustments,
                 audioConfig = audioConfig,
                 resolution = resolution,
-                cropRectNormalized = cropNorm
+                cropRectNormalized = cropNorm,
+                exportFormat = format,
+                keyColor = activeKeyColor,
+                chromaTolerance = chromaTolerance,
+                replacementType = bgReplacementType,
+                replacementBgBitmap = replacementBgBitmap,
+                replacementBgColor = replacementBgColor
             ).collectLatest { state ->
                 when (state) {
                     is VideoEffectTransformer.TransformState.Progress -> {
@@ -215,7 +367,7 @@ class VideoEditorActivity : AppCompatActivity() {
                     }
                     is VideoEffectTransformer.TransformState.Success -> {
                         binding.layoutExportProgress.visibility = View.GONE
-                        Toast.makeText(this@VideoEditorActivity, "✅ Video ${resolution.label} selesai diexport!\nDisimpan di: ${outputFile.name}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@VideoEditorActivity, "✅ Video (${format.extension.uppercase()} ${resolution.label}) selesai diexport!\nDisimpan di: ${outputFile.name}", Toast.LENGTH_LONG).show()
                     }
                     is VideoEffectTransformer.TransformState.Error -> {
                         binding.layoutExportProgress.visibility = View.GONE

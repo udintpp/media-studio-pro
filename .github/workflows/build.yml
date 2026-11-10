@@ -47,29 +47,45 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.2.0
-          name: "MediaStudio Pro v1.2.0 - Cropper Foto & Video Interaktif & Tandai Warna Transparan"
+          tag_name: v1.3.0
+          name: "MediaStudio Pro v1.3.0 - Latar Transparan Penuh & Format Lengkap Foto & Video"
           body: |
-            ## 🎨 MediaStudio Pro v1.2.0 - Cropper Interaktif & Tandai Warna Transparan (Pipet)
+            ## 🎨 MediaStudio Pro v1.3.0 - Background Transparan Penuh & Format Lengkap (Foto & Video)
 
-            Rilis pembaruan **MediaStudio Pro v1.2.0** menambahkan fitur unggulan baru sesuai permintaan:
-            
-            ### 🚀 Fitur Baru v1.2.0:
-            - ✂️ **Cropper Foto & Video Interaktif (Penanda Kotak):**
-              - Dilengkapi kotak seleksi interaktif dengan 4 lingkaran penanda sudut yang dapat digeser bebas dengan jari.
-              - Mendukung crop foto dan video bebas (freeform) serta rasio aspek (1:1, 4:5, 9:16, 16:9, 4:3).
-              - Dilengkapi garis kisi pembantu (*Rule-of-Thirds Grid*) dan bayangan gelap di luar area crop.
-            - 🎯 **Tandai Warna Jadikan BG Transparan (Pipet / Eyedropper):**
-              - Cukup sentuh bagian warna apapun pada foto atau video, kaca pembesar (*magnifying loupe*) akan muncul menampilkan warna dan kode HEX secara akurat.
-              - Begitu dilepas, warna yang ditandai tersebut langsung diubah menjadi transparan (*Alpha Transparency*) dengan kehalusan tepi otomatis!
-              - Bekerja untuk foto maupun video (Chroma Key / Green Screen / Custom color removal).
-            - 🧠 **AI Background Remover & Kuas Pemulih:** Segmentasi figur manusia Google ML Kit, kuas pemulih sentuh, dan proteksi warna kulit.
+            Rilis pembaruan besar **MediaStudio Pro v1.3.0** menghadirkan pemenuhan penuh permintaan pengguna terkait background transparan dan pilihan format export terlengkap:
 
-            - ✂️ **Potong & Sambung Video:** Trim video presisi milidetik dan sambungkan beberapa klip video menjadi satu.
-            - 🖼️ **Ekstrak Frame Video:** Tangkap foto momen video dalam resolusi asli/4K secara instan atau beruntun.
-            - 🔍 **Pencarian Emotikon & Stiker Google/Web:** Cari emotikon Unicode lengkap dan stiker web GIF/PNG transparan langsung dari keyword pencarian.
-            - 🎵 **Mixer Audio Multi-Track & Efek Lengkap:** Ganti audio video, atur volume multi-track, speed tempo (0.5x - 2.0x), pitch shift (Chipmunk & Deep Voice), serta equalizer bass booster.
-            - 📷 **Akses Kamera & Galeri:** Tangkap foto/video langsung lewat kamera HP atau pilih dari galeri.
+            ### 🚀 Fitur Unggulan Baru v1.3.0:
+            1. 🏁 **Background Transparan Penuh (Motif Papan Catur):**
+               - Saat background foto dihapus (AI / Flood Fill / Pipet / Kuas), latar belakang otomatis menjadi **100% transparan** dengan motif papan catur (*transparency checkerboard*) profesional.
+               - Latar transparan dipertahankan utuh saat export ke format yang mendukung alpha channel.
+               - Latar baru HANYA muncul jika pengguna secara eksplisit memilih **Ganti Background** (foto galeri, warna putih/hitam/neon).
+               - Tombol **✨ BG Transparan Murni** untuk mengembalikan latar ke transparan kapan saja.
+
+            2. 🎥 **Hapus & Ganti Background Video (Chroma Key & Transparansi):**
+               - **Hapus BG Video:** Tandai warna latar video dengan Pipet, atau gunakan preset Layar Hijau (*Green Screen*) / Layar Biru (*Blue Screen*).
+               - **Ganti BG Video:** Pilihan mengganti background video dengan Foto dari Galeri, Video lain dari Galeri, atau Warna Solid baru.
+               - **Pratinjau Langsung (Live Preview):** Thumbnail floating overlay menampilkan hasil pemotongan latar secara instan dengan motif papan catur transparan.
+
+            3. 📁 **Pilihan Format Export Foto Terlengkap:**
+               - **PNG:** Lossless, mendukung transparansi penuh (Alpha Channel).
+               - **JPG / JPEG:** Kompresi foto standar hemat memori.
+               - **WEBP:** Format modern Google, mendukung transparansi & hemat ukuran.
+               - **GIF:** Format grafis 256 warna dengan transparansi.
+               - **ICO:** Format ikon Windows 32-bit ARGB untuk desktop & favicon.
+               - **PSD:** Dokumen Adobe Photoshop multi-channel dengan channel Alpha.
+               - **PCX:** Format klasik ZSoft PC Paintbrush 24-bit RGB.
+               - **SVG & AVG:** Scalable Vector Graphics XML & Android Vector Drawable XML.
+               - **BMP:** Windows Bitmap 32-bit uncompressed dengan alpha.
+               - **TIFF:** Tagged Image File Format profesional dengan unassociated alpha.
+
+            4. 🎬 **Pilihan Format Export Video Terlengkap:**
+               - **MP4:** Standar universal H.264 / H.265 Ultra HD hingga 4K.
+               - **MOV:** Apple QuickTime video format.
+               - **WEBM:** VP8 / VP9 dengan dukungan video transparan (Alpha Channel).
+               - **MKV:** Matroska multimedia container.
+               - **AVI:** Audio Video Interleave klasik.
+               - **3GP:** Format ringan ponsel mobile.
+               - **GIF Animasi Video:** Konversi cuplikan video bergerak dengan background transparan untuk stiker WA/Telegram.
 
             ### 📲 Unduh & Instal:
             Unduh file `app-debug.apk` di bawah ini dan instal langsung di smartphone Android Anda.
