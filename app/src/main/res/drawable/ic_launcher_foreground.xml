@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Camera/Studio Body -->
+    <path
+        android:fillColor="#6366F1"
+        android:pathData="M30,36h12l4,-6h16l4,6h12c3.3,0 6,2.7 6,6v30c0,3.3 -2.7,6 -6,6H30c-3.3,0 -6,-2.7 -6,-6V42c0,-3.3 2.7,-6 6,-6z" />
+    <!-- Lens Circle Outer -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M54,44c6.63,0 12,5.37 12,12s-5.37,12 -12,12s-12,-5.37 -12,-12s5.37,-12 12,-12z" />
+    <!-- Lens Circle Inner / Play button -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M51,50l10,6l-10,6z" />
+    <!-- Magic Sparkles Star -->
+    <path
+        android:fillColor="#F59E0B"
+        android:pathData="M78,28l1.5,4.5l4.5,1.5l-4.5,1.5l-1.5,4.5l-1.5,-4.5l-4.5,-1.5l4.5,-1.5z" />
+</vector>

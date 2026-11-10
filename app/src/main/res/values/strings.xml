@@ -1,0 +1,38 @@
+<resources>
+    <string name="app_name">MediaStudio Pro</string>
+    <string name="slogan">Studio Editor Foto &amp; Video Lengkap 4K</string>
+
+    <!-- Navigation & Titles -->
+    <string name="nav_home">Home</string>
+    <string name="nav_photo">Edit Foto</string>
+    <string name="nav_video">Edit Video</string>
+    <string name="nav_tools">Alat Studio</string>
+
+    <!-- Features -->
+    <string name="title_photo_editor">Photo Studio Pro</string>
+    <string name="desc_photo_editor">Hapus background, filter cantik, kontras, crop, stiker GIF &amp; PNG, resolusi 4K</string>
+
+    <string name="title_video_editor">Video Studio Pro</string>
+    <string name="desc_video_editor">Filter, kontras, saturasi, chroma key background, rotasi, ganti audio, export 4K</string>
+
+    <string name="title_slideshow">Foto ke Video</string>
+    <string name="desc_slideshow">Ubah kumpulan foto jadi video beranimasi dengan musik latar</string>
+
+    <string name="title_cut_merge">Potong &amp; Sambung</string>
+    <string name="desc_cut_merge">Trim video presisi milidetik dan gabungkan banyak video jadi satu</string>
+
+    <string name="title_extract_frame">Ekstrak Frame Video</string>
+    <string name="desc_extract_frame">Ambil tangkapan foto dari video dalam resolusi asli/4K</string>
+
+    <string name="title_audio_mixer">Mixer &amp; Efek Audio</string>
+    <string name="desc_audio_mixer">Ganti suara video, atur volume multi-track, equalizer, pitch &amp; tempo</string>
+
+    <!-- Actions -->
+    <string name="action_camera">Kamera</string>
+    <string name="action_gallery">Galeri</string>
+    <string name="action_save">Simpan 4K</string>
+    <string name="action_apply">Terapkan</string>
+    <string name="action_reset">Reset</string>
+    <string name="action_export">Export Media</string>
+    <string name="action_search_emoji">Cari Emotikon Google</string>
+</resources>

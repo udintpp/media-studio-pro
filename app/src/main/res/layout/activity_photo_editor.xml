@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/background"
+    android:orientation="vertical">
+
+    <!-- Top Action Bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:gravity="center_vertical"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp">
+
+        <ImageButton
+            android:id="@+id/btn_back"
+            android:layout_width="40dp"
+            android:layout_height="40dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@drawable/ic_play"
+            android:rotation="180"
+            app:tint="@color/text_primary" />
+
+        <TextView
+            android:id="@+id/tv_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:text="Photo Studio Pro"
+            android:textColor="@color/text_primary"
+            android:textSize="18sp"
+            android:textStyle="bold" />
+
+        <Button
+            android:id="@+id/btn_add_sticker"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginEnd="6dp"
+            android:text="+ Emotikon"
+            android:textColor="@color/accent_amber"
+            android:textSize="12sp" />
+
+        <Button
+            android:id="@+id/btn_export_4k"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:backgroundTint="@color/primary"
+            android:text="Simpan 4K"
+            android:textColor="@color/white"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Canvas Preview Area -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:background="#05080E">
+
+        <com.udintpp.mediastudio.ui.photo.PhotoCanvasView
+            android:id="@+id/photo_canvas"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- Quick Delete Active Sticker Button -->
+        <ImageButton
+            android:id="@+id/btn_delete_active_sticker"
+            android:layout_width="44dp"
+            android:layout_height="44dp"
+            android:layout_gravity="top|end"
+            android:layout_margin="12dp"
+            android:background="@drawable/bg_pill_button"
+            android:backgroundTint="@color/error"
+            android:src="@drawable/ic_delete"
+            app:tint="@color/white" />
+    </FrameLayout>
+
+    <!-- Dynamic Control Slider Panel -->
+    <LinearLayout
+        android:id="@+id/layout_slider_panel"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface"
+        android:orientation="vertical"
+        android:padding="12dp">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <TextView
+                android:id="@+id/tv_active_tool_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Kecerahan (Brightness)"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_active_tool_value"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="@color/accent_cyan"
+                android:textSize="14sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
+        <com.google.android.material.slider.Slider
+            android:id="@+id/slider_tool"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:value="0"
+            android:valueFrom="-100"
+            android:valueTo="100"
+            app:thumbColor="@color/primary"
+            app:trackColorActive="@color/primary"
+            app:trackColorInactive="@color/slider_track" />
+    </LinearLayout>
+
+    <!-- Sub-options Bar (Buttons for BG removal, Crop ratios, Filters, etc.) -->
+    <HorizontalScrollView
+        android:id="@+id/hsv_sub_options"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/surface_variant"
+        android:padding="8dp">
+
+        <LinearLayout
+            android:id="@+id/layout_sub_buttons"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal" />
+    </HorizontalScrollView>
+
+    <!-- Bottom Tool Categories Bar -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:background="@color/background"
+        android:padding="6dp">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <!-- Tool: Hapus BG -->
+            <Button
+                android:id="@+id/btn_tool_bg_remove"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Hapus BG"
+                android:textColor="@color/text_primary" />
+
+            <!-- Tool: Percantik -->
+            <Button
+                android:id="@+id/btn_tool_beauty"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Percantik"
+                android:textColor="@color/text_primary" />
+
+            <!-- Tool: Kecerahan -->
+            <Button
+                android:id="@+id/btn_tool_brightness"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Brightness"
+                android:textColor="@color/text_primary" />
+
+            <!-- Tool: Kontras -->
+            <Button
+                android:id="@+id/btn_tool_contrast"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Kontras"
+                android:textColor="@color/text_primary" />
+
+            <!-- Tool: Saturasi -->
+            <Button
+                android:id="@+id/btn_tool_saturation"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Saturasi"
+                android:textColor="@color/text_primary" />
+
+            <!-- Tool: Filter Artistik -->
+            <Button
+                android:id="@+id/btn_tool_filter"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Filter"
+                android:textColor="@color/text_primary" />
+
+            <!-- Tool: Crop & Rasio -->
+            <Button
+                android:id="@+id/btn_tool_crop"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Potong / Crop"
+                android:textColor="@color/text_primary" />
+
+            <!-- Tool: Rotasi & Flip -->
+            <Button
+                android:id="@+id/btn_tool_rotate"
+                style="@style/Widget.Material3.Button.TextButton"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Rotasi"
+                android:textColor="@color/text_primary" />
+        </LinearLayout>
+    </HorizontalScrollView>
+
+</LinearLayout>

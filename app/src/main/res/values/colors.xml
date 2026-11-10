@@ -1,0 +1,27 @@
+<resources>
+    <!-- Brand Studio Palette -->
+    <color name="primary">#6366F1</color>
+    <color name="primary_variant">#4F46E5</color>
+    <color name="secondary">#EC4899</color>
+    <color name="accent_cyan">#06B6D4</color>
+    <color name="accent_amber">#F59E0B</color>
+    <color name="accent_emerald">#10B981</color>
+
+    <!-- Dark Surface Theme -->
+    <color name="background">#0B0F17</color>
+    <color name="surface">#151C28</color>
+    <color name="surface_variant">#1E293B</color>
+    <color name="card_stroke">#334155</color>
+    <color name="text_primary">#F8FAFC</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="text_muted">#64748B</color>
+
+    <!-- Controls & Status -->
+    <color name="slider_track">#334155</color>
+    <color name="error">#EF4444</color>
+    <color name="success">#10B981</color>
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+    <color name="transparent">#00000000</color>
+    <color name="overlay_scrim">#80000000</color>
+</resources>

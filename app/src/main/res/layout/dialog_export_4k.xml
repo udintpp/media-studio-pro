@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:background="@drawable/bg_dialog_rounded"
+    android:orientation="vertical"
+    android:padding="20dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Pilih Resolusi Export (Hingga 4K)"
+        android:textColor="@color/text_primary"
+        android:textSize="18sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="Mendukung kualitas tinggi Ultra HD 3840x2160 dengan bitrate jernih."
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp" />
+
+    <Spinner
+        android:id="@+id/spinner_resolutions"
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:layout_marginTop="16dp"
+        android:background="@drawable/bg_search_input"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp" />
+
+    <TextView
+        android:id="@+id/tv_resolution_note"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="⭐ Rekomendasi: 4K Ultra HD untuk detail terbaik atau 1080p FHD untuk hemat ukuran file."
+        android:textColor="@color/accent_amber"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/btn_confirm_export"
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:layout_marginTop="20dp"
+        android:backgroundTint="@color/primary"
+        android:text="Export Sekarang (Simpan)"
+        android:textAllCaps="false"
+        android:textColor="@color/white"
+        android:textSize="15sp"
+        android:textStyle="bold" />
+
+</LinearLayout>
