@@ -198,7 +198,7 @@ object VideoChromaKeyEngine {
         }
     }
 
-    private fun writeAnimatedGif(frames: List<Bitmap>, delayMs: Int, out: OutputStream) {
+    fun writeAnimatedGif(frames: List<Bitmap>, delayMs: Int, out: OutputStream) {
         if (frames.isEmpty()) return
         val w = frames[0].width
         val h = frames[0].height

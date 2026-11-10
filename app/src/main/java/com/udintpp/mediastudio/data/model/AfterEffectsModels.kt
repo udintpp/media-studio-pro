@@ -69,6 +69,42 @@ enum class AeEffectType(
         category = "Blur & Sharpen",
         description = "Efek blur kecepatan terarah untuk menciptakan kesan pergerakan cepat dan aksi dramatis."
     ),
+    LIGHT_RAYS(
+        id = "light_rays",
+        displayName = "☀️ CC Light Rays (God Rays)",
+        category = "Generate",
+        description = "Pancaran sinar cahaya volumetrik berkilau (god rays) memancar dramatis dari pusat pencahayaan."
+    ),
+    TURBULENT_DISPLACE(
+        id = "turbulent_displace",
+        displayName = "🌊 Turbulent Displace (Liquify)",
+        category = "Distort",
+        description = "Distorsi riak gelombang cairan, efek panas atmosferik, dan asap organik dinamis khas After Effects."
+    ),
+    ZOOM_BLUR(
+        id = "zoom_blur",
+        displayName = "🌀 CC Radial Fast Blur (Zoom)",
+        category = "Blur & Sharpen",
+        description = "Efek zoom burst radial eksplosif ke arah pusat untuk transisi aksi berkecepatan tinggi."
+    ),
+    SABER_NEON_EDGE(
+        id = "saber_neon",
+        displayName = "⚡ Saber Laser & Neon Edge",
+        category = "Stylize",
+        description = "Efek kontur garis tepi laser berenergi tinggi bercahaya neon ala plugin Video Copilot Saber."
+    ),
+    ECHO_TRAIL(
+        id = "echo_trail",
+        displayName = "👻 Echo & Motion Trails",
+        category = "Time",
+        description = "Bayangan jejak waktu berulang (echo trails) di belakang objek bergerak menciptakan efek surealis."
+    ),
+    LUMETRI_COLOR(
+        id = "lumetri_color",
+        displayName = "🎨 Lumetri Color Curves",
+        category = "Color Correction",
+        description = "Grading warna sinematik Hollywood: Teal & Orange, Cyberpunk Neo, Noir Klasik, dan Matrix Emerald."
+    ),
     AUDIO_SPECTRUM(
         id = "audio_spectrum",
         displayName = "🎵 Audio Waveform Visualizer",
@@ -91,14 +127,37 @@ enum class AeBlendMode(
     XOR("Difference / XOR", PorterDuff.Mode.XOR)
 }
 
+enum class AeMaskShape {
+    RECTANGLE, ELLIPSE
+}
+
+enum class AeMaskMode {
+    ADD, SUBTRACT, INTERSECT
+}
+
+data class AeMask(
+    var isEnabled: Boolean = false,
+    var shape: AeMaskShape = AeMaskShape.RECTANGLE,
+    var mode: AeMaskMode = AeMaskMode.ADD,
+    var left: Float = 0.15f,
+    var top: Float = 0.15f,
+    var right: Float = 0.85f,
+    var bottom: Float = 0.85f,
+    var feather: Float = 20f,
+    var isInverted: Boolean = false,
+    var opacity: Float = 1.0f
+)
+
 data class AeKeyframe(
     val timeMs: Long,
     val posX: Float = 0f,
     val posY: Float = 0f,
     val scale: Float = 1.0f,
     val rotation: Float = 0f,
+    val rotX: Float = 0f,
+    val rotY: Float = 0f,
     val opacity: Float = 1.0f,
-    val easeType: String = "EASY_EASE" // "LINEAR", "EASE_IN", "EASE_OUT", "EASY_EASE"
+    val easeType: String = "EASY_EASE" // "LINEAR", "EASE_IN", "EASE_OUT", "EASY_EASE", "BOUNCE", "ELASTIC"
 )
 
 data class AeMotionText(
@@ -112,6 +171,19 @@ data class AeMotionText(
 )
 
 data class AeConfig(
+    // 3D Layer Switch (After Effects 3D Space)
+    var is3DLayerEnabled: Boolean = false,
+    var rotateX: Float = 0f, // Pitch / Tilt 3D
+    var rotateY: Float = 0f, // Yaw / Pan 3D
+    var cameraDistanceZ: Float = -10f,
+
+    // Masking & Rotoscoping (Pen / Shape Masks)
+    var mask: AeMask = AeMask(),
+
+    // Speed Ramping & Time Remapping
+    var speedMultiplier: Float = 1.0f,
+    var isTimeReversed: Boolean = false,
+
     // Effect toggles
     var isOpticalGlowEnabled: Boolean = false,
     var glowIntensity: Float = 0.75f,
@@ -130,6 +202,28 @@ data class AeConfig(
     var flareIntensity: Float = 0.7f,
     var flareX: Float = 0.35f,
     var flareY: Float = 0.35f,
+
+    var isLightRaysEnabled: Boolean = false,
+    var lightRaysIntensity: Float = 0.75f,
+    var lightRaysLength: Float = 60f,
+    var lightRaysX: Float = 0.5f,
+    var lightRaysY: Float = 0.3f,
+
+    var isTurbulentDisplaceEnabled: Boolean = false,
+    var turbulentAmount: Float = 20f,
+    var turbulentSpeed: Float = 1.0f,
+
+    var isZoomBlurEnabled: Boolean = false,
+    var zoomBlurAmount: Float = 25f,
+
+    var isSaberEdgeEnabled: Boolean = false,
+    var saberGlowColor: Int = Color.parseColor("#06B6D4"),
+    var saberWidth: Float = 8f,
+
+    var isEchoTrailEnabled: Boolean = false,
+    var echoCount: Int = 3,
+
+    var lumetriPreset: String = "NONE", // "NONE", "TEAL_ORANGE", "CYBERPUNK", "FILM_NOIR", "MATRIX", "VINTAGE_WARM"
 
     var activeParticleType: AeEffectType? = null,
     var particleCount: Int = 40,

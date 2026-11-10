@@ -1,11 +1,15 @@
 package com.udintpp.mediastudio.engine.vfx
 
 import android.graphics.Bitmap
+import android.graphics.Camera
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.ColorMatrix
+import android.graphics.ColorMatrixColorFilter
 import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
+import android.graphics.Path
 import android.graphics.PointF
 import android.graphics.PorterDuff
 import android.graphics.PorterDuffXfermode
@@ -16,6 +20,8 @@ import android.graphics.Shader
 import com.udintpp.mediastudio.data.model.AeConfig
 import com.udintpp.mediastudio.data.model.AeEffectType
 import com.udintpp.mediastudio.data.model.AeKeyframe
+import com.udintpp.mediastudio.data.model.AeMask
+import com.udintpp.mediastudio.data.model.AeMaskShape
 import com.udintpp.mediastudio.data.model.AeMotionText
 import java.util.Random
 import kotlin.math.abs
@@ -30,7 +36,8 @@ object AfterEffectsRenderer {
 
     /**
      * Renders all active Adobe After Effects visual effects, keyframe transformations,
-     * particle simulations, optical glow, and motion graphics onto a frame bitmap.
+     * 3D perspective layers, shape masking, particle simulations, optical glow,
+     * and motion graphics onto a frame bitmap.
      */
     fun renderFrame(
         src: Bitmap,
@@ -44,7 +51,7 @@ object AfterEffectsRenderer {
         val canvas = Canvas(output)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
-        // 1. Evaluate Keyframing (Position, Scale, Rotation, Opacity)
+        // 1. Evaluate Keyframing (Position, Scale, Rotation, 3D RotX/Y, Opacity)
         val transform = evaluateKeyframeTransform(config.keyframes, timeMs)
 
         // 2. Evaluate Camera Wiggle Shake (AE Handheld Wiggle)
@@ -54,21 +61,42 @@ object AfterEffectsRenderer {
             PointF(0f, 0f)
         }
 
-        // Apply transforms to canvas
+        // Apply transforms to canvas (including 3D Layer Space)
         canvas.save()
         val centerX = w / 2f
         val centerY = h / 2f
         canvas.translate(centerX + transform.posX + wiggleOffset.x, centerY + transform.posY + wiggleOffset.y)
         canvas.rotate(transform.rotation)
         canvas.scale(transform.scale, transform.scale)
+
+        // 3D Perspective Rotation (After Effects 3D Switch)
+        if (config.is3DLayerEnabled || transform.rotX != 0f || transform.rotY != 0f) {
+            val camera = Camera()
+            camera.save()
+            camera.translate(0f, 0f, config.cameraDistanceZ)
+            camera.rotateX(transform.rotX + if (config.is3DLayerEnabled) config.rotateX else 0f)
+            camera.rotateY(transform.rotY + if (config.is3DLayerEnabled) config.rotateY else 0f)
+            val matrix3D = Matrix()
+            camera.getMatrix(matrix3D)
+            camera.restore()
+            canvas.concat(matrix3D)
+        }
+
         canvas.translate(-centerX, -centerY)
+
+        // Masking & Rotoscoping Clip
+        if (config.mask.isEnabled) {
+            applyMaskClip(canvas, w, h, config.mask)
+        }
 
         paint.alpha = (transform.opacity * 255).toInt().coerceIn(0, 255)
         paint.xfermode = PorterDuffXfermode(config.blendMode.porterDuffMode)
 
-        // 3. Render Base Video Frame or RGB Split Glitch
+        // 3. Render Base Video Frame, Turbulent Displace, or RGB Split Glitch
         if (config.isRgbGlitchEnabled) {
             renderRgbGlitch(canvas, src, timeMs, config.glitchIntensity, config.glitchScanlines, paint)
+        } else if (config.isTurbulentDisplaceEnabled) {
+            renderTurbulentDisplace(canvas, src, timeMs, config.turbulentAmount, config.turbulentSpeed, paint)
         } else {
             canvas.drawBitmap(src, 0f, 0f, paint)
         }
@@ -84,22 +112,42 @@ object AfterEffectsRenderer {
             renderAnamorphicLensFlare(canvas, w, h, config.flareX, config.flareY, config.flareIntensity, timeMs)
         }
 
-        // 6. Particle World Simulation
+        // 6. CC Light Rays (God Rays)
+        if (config.isLightRaysEnabled) {
+            renderCcLightRays(canvas, w, h, config.lightRaysX, config.lightRaysY, config.lightRaysIntensity, config.lightRaysLength, timeMs)
+        }
+
+        // 7. CC Radial Fast Blur / Zoom Blur
+        if (config.isZoomBlurEnabled) {
+            renderZoomBlur(canvas, src, config.zoomBlurAmount)
+        }
+
+        // 8. Saber Laser & Neon Edge
+        if (config.isSaberEdgeEnabled) {
+            renderSaberEdgeGlow(canvas, src, config.saberGlowColor, config.saberWidth, timeMs)
+        }
+
+        // 9. Particle World Simulation
         if (config.activeParticleType != null) {
             renderParticleWorld(canvas, w, h, timeMs, config.activeParticleType!!, config.particleCount, config.particleSpeed)
         }
 
-        // 7. 35mm Celluloid Film Grain
+        // 10. 35mm Celluloid Film Grain
         if (config.isFilmGrainEnabled) {
             renderFilmGrain(canvas, w, h, timeMs, config.grainAmount)
         }
 
-        // 8. Audio Waveform Spectrum Visualizer
+        // 11. Lumetri Color Curves Grading
+        if (config.lumetriPreset != "NONE") {
+            renderLumetriColor(canvas, w, h, config.lumetriPreset)
+        }
+
+        // 12. Audio Waveform Spectrum Visualizer
         if (config.isAudioSpectrumEnabled) {
             renderAudioWaveform(canvas, w, h, timeMs)
         }
 
-        // 9. Motion Graphics Text
+        // 13. Motion Graphics Text
         for (motionText in config.motionTexts) {
             renderMotionText(canvas, w, h, timeMs, motionText)
         }
@@ -113,6 +161,8 @@ object AfterEffectsRenderer {
         val posY: Float = 0f,
         val scale: Float = 1.0f,
         val rotation: Float = 0f,
+        val rotX: Float = 0f,
+        val rotY: Float = 0f,
         val opacity: Float = 1.0f
     )
 
@@ -120,17 +170,17 @@ object AfterEffectsRenderer {
         if (keyframes.isEmpty()) return InterpolatedTransform()
         if (keyframes.size == 1) {
             val k = keyframes[0]
-            return InterpolatedTransform(k.posX, k.posY, k.scale, k.rotation, k.opacity)
+            return InterpolatedTransform(k.posX, k.posY, k.scale, k.rotation, k.rotX, k.rotY, k.opacity)
         }
 
         val sorted = keyframes.sortedBy { it.timeMs }
         if (timeMs <= sorted.first().timeMs) {
             val k = sorted.first()
-            return InterpolatedTransform(k.posX, k.posY, k.scale, k.rotation, k.opacity)
+            return InterpolatedTransform(k.posX, k.posY, k.scale, k.rotation, k.rotX, k.rotY, k.opacity)
         }
         if (timeMs >= sorted.last().timeMs) {
             val k = sorted.last()
-            return InterpolatedTransform(k.posX, k.posY, k.scale, k.rotation, k.opacity)
+            return InterpolatedTransform(k.posX, k.posY, k.scale, k.rotation, k.rotX, k.rotY, k.opacity)
         }
 
         // Find surrounding keyframes
@@ -153,6 +203,8 @@ object AfterEffectsRenderer {
             posY = prev.posY + (next.posY - prev.posY) * t,
             scale = prev.scale + (next.scale - prev.scale) * t,
             rotation = prev.rotation + (next.rotation - prev.rotation) * t,
+            rotX = prev.rotX + (next.rotX - prev.rotX) * t,
+            rotY = prev.rotY + (next.rotY - prev.rotY) * t,
             opacity = prev.opacity + (next.opacity - prev.opacity) * t
         )
     }
@@ -169,7 +221,190 @@ object AfterEffectsRenderer {
                     -1f + (4f - 2f * t) * t
                 }
             }
+            "ELASTIC" -> {
+                val p = 0.3f
+                (Math.pow(2.0, (-10 * t).toDouble()) * sin(((t - p / 4) * (2 * Math.PI) / p)) + 1).toFloat()
+            }
             else -> t // Linear
+        }
+    }
+
+    // --- Masking & Rotoscoping (Shape Masks) ---
+    private fun applyMaskClip(canvas: Canvas, w: Int, h: Int, mask: AeMask) {
+        val path = Path()
+        val l = mask.left * w
+        val t = mask.top * h
+        val r = mask.right * w
+        val b = mask.bottom * h
+
+        if (mask.shape == AeMaskShape.ELLIPSE) {
+            path.addOval(RectF(l, t, r, b), Path.Direction.CW)
+        } else {
+            path.addRoundRect(RectF(l, t, r, b), mask.feather, mask.feather, Path.Direction.CW)
+        }
+
+        if (mask.isInverted) {
+            val full = Path()
+            full.addRect(0f, 0f, w.toFloat(), h.toFloat(), Path.Direction.CW)
+            full.op(path, Path.Op.DIFFERENCE)
+            canvas.clipPath(full)
+        } else {
+            canvas.clipPath(path)
+        }
+    }
+
+    // --- Turbulent Displace (Liquify & Heatwave ripples) ---
+    private fun renderTurbulentDisplace(
+        canvas: Canvas,
+        src: Bitmap,
+        timeMs: Long,
+        amount: Float,
+        speed: Float,
+        paint: Paint
+    ) {
+        val strips = 20
+        val stripH = src.height / strips
+        val w = src.width
+        val t = (timeMs / 1000f) * speed * 3.5f
+
+        for (i in 0 until strips) {
+            val sy = i * stripH
+            val sh = if (i == strips - 1) src.height - sy else stripH
+            val srcRect = Rect(0, sy, w, sy + sh)
+            val dx = (sin((sy / 35.0) + t) * amount).toFloat()
+            val dstRect = RectF(dx, sy.toFloat(), w.toFloat() + dx, (sy + sh).toFloat())
+            canvas.drawBitmap(src, srcRect, dstRect, paint)
+        }
+    }
+
+    // --- CC Light Rays (Volumetric God Rays) ---
+    private fun renderCcLightRays(
+        canvas: Canvas,
+        w: Int,
+        h: Int,
+        xFrac: Float,
+        yFrac: Float,
+        intensity: Float,
+        length: Float,
+        timeMs: Long
+    ) {
+        val cx = w * xFrac
+        val cy = h * yFrac
+        val numRays = 16
+        val rotBase = (timeMs / 45f) % 360f
+        val maxLen = (min(w, h) * (length / 50f)).coerceAtLeast(60f)
+
+        val rayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+        }
+
+        for (i in 0 until numRays) {
+            val angleDeg = rotBase + (i * (360f / numRays))
+            val rad = Math.toRadians(angleDeg.toDouble())
+            val rayLen = maxLen * (0.65f + 0.35f * sin(i * 1.8 + timeMs / 250.0).toFloat())
+            val ex = cx + (cos(rad) * rayLen).toFloat()
+            val ey = cy + (sin(rad) * rayLen).toFloat()
+
+            rayPaint.strokeWidth = 6f + (intensity * 10f)
+            rayPaint.shader = LinearGradient(
+                cx, cy, ex, ey,
+                Color.argb((intensity * 190).toInt().coerceIn(30, 240), 255, 230, 160),
+                Color.TRANSPARENT,
+                Shader.TileMode.CLAMP
+            )
+            canvas.drawLine(cx, cy, ex, ey, rayPaint)
+        }
+
+        val corePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+            shader = RadialGradient(
+                cx, cy, maxLen * 0.4f,
+                intArrayOf(Color.argb((intensity * 255).toInt().coerceIn(80, 255), 255, 255, 230), Color.TRANSPARENT),
+                floatArrayOf(0f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(cx, cy, maxLen * 0.4f, corePaint)
+    }
+
+    // --- CC Radial Fast Blur / Zoom Blur ---
+    private fun renderZoomBlur(canvas: Canvas, src: Bitmap, amount: Float) {
+        val steps = 3
+        val w = src.width.toFloat()
+        val h = src.height.toFloat()
+        val cx = w / 2f
+        val cy = h / 2f
+        val zoomPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+            alpha = (90 / steps).coerceIn(15, 60)
+        }
+        for (i in 1..steps) {
+            val scale = 1.0f + (amount / 200f) * (i.toFloat() / steps)
+            canvas.save()
+            canvas.translate(cx, cy)
+            canvas.scale(scale, scale)
+            canvas.translate(-cx, -cy)
+            canvas.drawBitmap(src, 0f, 0f, zoomPaint)
+            canvas.restore()
+        }
+    }
+
+    // --- Saber Laser & Neon Edge ---
+    private fun renderSaberEdgeGlow(canvas: Canvas, src: Bitmap, glowColor: Int, width: Float, timeMs: Long) {
+        val edgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = glowColor
+            style = Paint.Style.STROKE
+            strokeWidth = width
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+            setShadowLayer(width * 2.5f, 0f, 0f, glowColor)
+        }
+        val w = src.width.toFloat()
+        val h = src.height.toFloat()
+        val inset = 10f
+        canvas.drawRoundRect(RectF(inset, inset, w - inset, h - inset), 16f, 16f, edgePaint)
+    }
+
+    // --- Lumetri Color Curves Grading ---
+    private fun renderLumetriColor(canvas: Canvas, w: Int, h: Int, preset: String) {
+        val overlayPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        when (preset) {
+            "TEAL_ORANGE" -> {
+                overlayPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.OVERLAY)
+                overlayPaint.shader = LinearGradient(
+                    0f, 0f, w.toFloat(), h.toFloat(),
+                    Color.argb(120, 255, 140, 20),
+                    Color.argb(120, 0, 150, 180),
+                    Shader.TileMode.CLAMP
+                )
+                canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), overlayPaint)
+            }
+            "CYBERPUNK" -> {
+                overlayPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.OVERLAY)
+                overlayPaint.shader = LinearGradient(
+                    0f, 0f, 0f, h.toFloat(),
+                    Color.argb(130, 236, 72, 153),
+                    Color.argb(130, 6, 182, 212),
+                    Shader.TileMode.CLAMP
+                )
+                canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), overlayPaint)
+            }
+            "FILM_NOIR" -> {
+                overlayPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.DARKEN)
+                overlayPaint.color = Color.argb(100, 30, 30, 40)
+                canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), overlayPaint)
+            }
+            "MATRIX" -> {
+                overlayPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.MULTIPLY)
+                overlayPaint.color = Color.argb(160, 50, 255, 120)
+                canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), overlayPaint)
+            }
+            "VINTAGE_WARM" -> {
+                overlayPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.OVERLAY)
+                overlayPaint.color = Color.argb(100, 250, 200, 100)
+                canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), overlayPaint)
+            }
         }
     }
 

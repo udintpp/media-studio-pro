@@ -39,7 +39,15 @@
   - `GIF Animasi Video` (Cuplikan video bergerak transparan)
 
 ### 3. ⚡ Adobe After Effects Studio Pro (Motion Graphics & VFX)
-- **Keyframe Animation Engine:** Pasang titik keyframe dinamis untuk **Posisi (X, Y)**, **Skala (Scale)**, **Rotasi (Rotation)**, dan **Opasitas (Opacity)** di timeline. Interpolasi kurva dengan mode **Easy-Ease**, **Linear**, **Ease-In**, dan **Ease-Out**.
+- **🧊 3D Layer Space (After Effects 3D Switch):** Transformasi layer dalam ruang 3 dimensi menggunakan matriks kamera perspektif: **3D Tilt X (Pitch)**, **3D Pan Y (Yaw)**, dan jarak kamera kedalaman Z.
+- **🎭 Masking & Rotoscoping:** Isolasi area dengan Shape Masks (**Kotak Persegi / Lingkaran Oval**), **Mask Feathering** (tepi halus), dan **Invert Mask** (pembalikan area dalam/luar).
+- **⚡ Speed Ramping & Time Remapping:** Kontrol kecepatan klip dinamis: Super Slow-Mo (0.25x), Slow Motion Sinematik (0.5x), Kecepatan Normal (1.0x), Cepat (1.5x), Hyperlapse (2.0x), dan **Putar Mundur (Reverse Time)**.
+- **📈 Keyframe Animation & Easing Curves:** Sisipkan titik keyframe dinamis untuk Posisi, Skala, Rotasi, 3D Tilt/Pan, dan Opasitas dengan kurva easing: **Easy-Ease (Hermite)**, **Linear**, **Ease-In**, **Ease-Out**, **Bounce (Pegas)**, dan **Elastic (Osilasi)**.
+- **☀️ CC Light Rays (Volumetric God Rays):** Pancaran sinar cahaya volumetrik berkilau memancar dramatis dari pusat hotspot pencahayaan dengan rotasi angular dinamis.
+- **🌊 Turbulent Displace (Liquify):** Distorsi riak gelombang cairan, efek panas atmosferik, dan asap organik dinamis khas After Effects.
+- **🌀 CC Radial Fast Blur (Zoom Blur):** Efek zoom burst radial eksplosif ke arah pusat untuk transisi aksi berkecepatan tinggi.
+- **⚡ Saber Neon Edge & Contour Glow:** Efek garis kontur tepi laser berenergi tinggi bercahaya neon ala plugin Video Copilot Saber.
+- **🎨 Lumetri Color Curves:** Grading warna sinematik Hollywood: **Teal & Orange Blockbuster**, **Cyberpunk Neon**, **Film Noir B&W Dramatis**, **Matrix Emerald**, dan **Vintage Golden Hour**.
 - **🌟 Optical Deep Glow:** Pendaran cahaya optik neon pekat (*radiance glow*) dengan ambang batas dinamis dan radius difusi bioskop.
 - **⚡ RGB Split & Glitch:** Aberasi kromatik kanal Red dan Cyan terpisah dengan horizontal scanlines cyberpunk.
 - **📳 Camera Wiggle Shake (`wiggle(freq, amp)`):** Simulasi goyangan kamera genggam organik natural dengan pengaturan frekuensi (Hz) dan amplitudo getaran.

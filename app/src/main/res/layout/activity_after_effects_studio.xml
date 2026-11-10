@@ -195,12 +195,40 @@
                     android:textSize="10sp" />
 
                 <Button
+                    android:id="@+id/btn_keyframe_rot_x"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="4dp"
+                    android:text="🧊 + 3D Tilt X"
+                    android:textSize="10sp" />
+
+                <Button
+                    android:id="@+id/btn_keyframe_rot_y"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="4dp"
+                    android:text="🧊 + 3D Pan Y"
+                    android:textSize="10sp" />
+
+                <Button
                     android:id="@+id/btn_keyframe_opacity"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="36dp"
                     android:layout_marginEnd="4dp"
                     android:text="👁️ + Keyframe Opasitas"
+                    android:textSize="10sp" />
+
+                <Button
+                    android:id="@+id/btn_keyframe_ease"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="36dp"
+                    android:layout_marginEnd="4dp"
+                    android:text="📈 Kurva Easing"
+                    android:textColor="@color/accent_cyan"
                     android:textSize="10sp" />
 
                 <Button
@@ -280,6 +308,35 @@
                 android:orientation="horizontal">
 
                 <Button
+                    android:id="@+id/btn_vfx_3d_layer"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🧊 3D Layer Space"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_mask"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🎭 Masking &amp; Roto"
+                    android:textColor="@color/accent_amber"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_speed"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="⚡ Speed Ramping"
+                    android:textSize="11sp" />
+
+                <Button
                     android:id="@+id/btn_vfx_glow"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
@@ -307,12 +364,57 @@
                     android:textSize="11sp" />
 
                 <Button
+                    android:id="@+id/btn_vfx_light_rays"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="☀️ CC Light Rays"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_turbulent"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🌊 Turbulent Displace"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_zoom_blur"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🌀 CC Radial Zoom"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_saber"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="⚡ Saber Neon Edge"
+                    android:textSize="11sp" />
+
+                <Button
                     android:id="@+id/btn_vfx_lens_flare"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
                     android:layout_marginEnd="6dp"
                     android:text="☀️ Lens Flare"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_lumetri"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🎨 Lumetri Color"
                     android:textSize="11sp" />
 
                 <Button
