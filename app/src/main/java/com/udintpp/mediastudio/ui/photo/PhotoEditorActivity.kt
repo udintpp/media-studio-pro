@@ -284,6 +284,28 @@ class PhotoEditorActivity : AppCompatActivity() {
             Toast.makeText(this, "Mode sentuh normal (Geser & stiker)", Toast.LENGTH_SHORT).show()
         }
 
+        addSubButton("🎯 Tandai Warna Transparan (Pipet)") {
+            binding.photoCanvas.brushMode = BrushMode.NONE
+            binding.photoCanvas.isCropModeActive = false
+            binding.photoCanvas.isEyedropperActive = true
+            Toast.makeText(this, "Sentuh/geser jari pada warna foto yang ingin dijadikan transparan!", Toast.LENGTH_LONG).show()
+
+            binding.photoCanvas.onColorSampled = { sampledColor ->
+                binding.photoCanvas.isEyedropperActive = false
+                val hex = String.format("#%06X", 0xFFFFFF and sampledColor)
+                Toast.makeText(this@PhotoEditorActivity, "Warna $hex dijadikan transparan!", Toast.LENGTH_SHORT).show()
+                originalBitmap?.let { src ->
+                    lifecycleScope.launch(Dispatchers.Default) {
+                        val transparentCutout = BackgroundRemover.removeColorToTransparent(src, sampledColor, tolerance = 40f)
+                        withContext(Dispatchers.Main) {
+                            currentProcessedBitmap = transparentCutout.copy(Bitmap.Config.ARGB_8888, true)
+                            binding.photoCanvas.baseBitmap = currentProcessedBitmap
+                        }
+                    }
+                }
+            }
+        }
+
         addSubButton("⚪ Ganti BG Putih") {
             binding.photoCanvas.backgroundColorOverride = Color.WHITE
         }
@@ -302,6 +324,8 @@ class PhotoEditorActivity : AppCompatActivity() {
 
         addSubButton("🔄 Reset BG") {
             binding.photoCanvas.brushMode = BrushMode.NONE
+            binding.photoCanvas.isEyedropperActive = false
+            binding.photoCanvas.isCropModeActive = false
             binding.photoCanvas.backgroundColorOverride = null
             binding.photoCanvas.backgroundBitmap = null
             currentProcessedBitmap = originalBitmap?.copy(Bitmap.Config.ARGB_8888, true)
@@ -319,12 +343,30 @@ class PhotoEditorActivity : AppCompatActivity() {
     }
 
     private fun setupCropSubMenu() {
+        addSubButton("✂️ Tandai Kotak Crop Bebas") {
+            binding.photoCanvas.brushMode = BrushMode.NONE
+            binding.photoCanvas.isEyedropperActive = false
+            binding.photoCanvas.isCropModeActive = true
+            Toast.makeText(this, "Geser lingkaran sudut penanda untuk memotong area foto yang diinginkan!", Toast.LENGTH_LONG).show()
+        }
+
+        addSubButton("✅ Terapkan Crop") {
+            val cropped = binding.photoCanvas.applyVisualCrop()
+            if (cropped != null) {
+                currentProcessedBitmap = cropped
+                Toast.makeText(this, "Foto berhasil dipotong sesuai penanda!", Toast.LENGTH_SHORT).show()
+            }
+        }
+
         for (ratio in AspectRatio.values()) {
             addSubButton(ratio.label) {
-                originalBitmap?.let { src ->
-                    val cropped = PhotoProcessor.cropToAspectRatio(src, ratio)
-                    currentProcessedBitmap = cropped
-                    binding.photoCanvas.baseBitmap = cropped
+                binding.photoCanvas.cropAspectRatio = ratio
+                if (!binding.photoCanvas.isCropModeActive) {
+                    originalBitmap?.let { src ->
+                        val cropped = PhotoProcessor.cropToAspectRatio(src, ratio)
+                        currentProcessedBitmap = cropped
+                        binding.photoCanvas.baseBitmap = cropped
+                    }
                 }
             }
         }

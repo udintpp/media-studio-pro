@@ -254,6 +254,65 @@ object BackgroundRemover {
     }
 
     /**
+     * "Tandai Warna Jadikan BG Transparan":
+     * Converts a specific sampled color (eyedropper key color) to transparent alpha across the image.
+     */
+    fun removeColorToTransparent(
+        source: Bitmap,
+        targetColor: Int,
+        tolerance: Float = 40f,
+        smoothness: Float = 15f
+    ): Bitmap {
+        val width = source.width
+        val height = source.height
+        val total = width * height
+        val output = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+
+        val srcPixels = IntArray(total)
+        source.getPixels(srcPixels, 0, width, 0, 0, width, height)
+
+        val kr = Color.red(targetColor)
+        val kg = Color.green(targetColor)
+        val kb = Color.blue(targetColor)
+
+        val tolSq = tolerance * tolerance
+        val smoothZone = smoothness.coerceAtLeast(1f)
+        val outerLimitSq = (tolerance + smoothZone) * (tolerance + smoothZone)
+
+        val outPixels = IntArray(total)
+
+        for (i in 0 until total) {
+            val c = srcPixels[i]
+            val r = (c shr 16) and 0xFF
+            val g = (c shr 8) and 0xFF
+            val b = c and 0xFF
+
+            val dr = r - kr
+            val dg = g - kg
+            val db = b - kb
+            val distSq = (dr * dr + dg * dg + db * db).toFloat()
+
+            when {
+                distSq <= tolSq -> {
+                    outPixels[i] = 0x00000000
+                }
+                distSq < outerLimitSq -> {
+                    val dist = sqrt(distSq)
+                    val ratio = (dist - tolerance) / smoothZone
+                    val alpha = (ratio.coerceIn(0f, 1f) * 255).toInt()
+                    outPixels[i] = (alpha shl 24) or (c and 0x00FFFFFF)
+                }
+                else -> {
+                    outPixels[i] = c
+                }
+            }
+        }
+
+        output.setPixels(outPixels, 0, width, 0, 0, width, height)
+        return output
+    }
+
+    /**
      * Manual eraser brush to erase unwanted background remnants.
      */
     fun eraseBrush(

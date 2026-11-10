@@ -120,6 +120,53 @@ class VideoEditorActivity : AppCompatActivity() {
             player?.volume = if (audioConfig.isOriginalMuted) 0f else 1f
         }
 
+        // Video Cropper Toggle
+        binding.btnVideoCropper.setOnClickListener {
+            val newState = !binding.videoCropOverlay.isCropModeActive
+            binding.videoCropOverlay.isCropModeActive = newState
+            binding.videoCropOverlay.isEyedropperActive = false
+            if (newState) {
+                binding.btnVideoCropper.text = "✅ Selesai Tandai Crop"
+                Toast.makeText(this, "Geser lingkaran sudut penanda untuk memotong area video!", Toast.LENGTH_SHORT).show()
+            } else {
+                binding.btnVideoCropper.text = "✂️ Tandai Kotak Crop"
+                Toast.makeText(this, "Area crop video telah ditandai", Toast.LENGTH_SHORT).show()
+            }
+        }
+
+        // Eyedropper Tandai Warna Transparan (Chroma Key)
+        binding.btnVideoPipette.setOnClickListener {
+            val uri = videoUri ?: return@setOnClickListener
+            val newState = !binding.videoCropOverlay.isEyedropperActive
+            binding.videoCropOverlay.isEyedropperActive = newState
+            binding.videoCropOverlay.isCropModeActive = false
+            if (newState) {
+                player?.pause()
+                val currentMs = player?.currentPosition ?: 0L
+                Toast.makeText(this, "Sentuh layar video untuk memilih warna yang ingin dijadikan transparan!", Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    val frameRes = com.udintpp.mediastudio.engine.video.VideoFrameExtractor.extractFrameAt(this@VideoEditorActivity, uri, currentMs)
+                    frameRes.getOrNull()?.let { bmp ->
+                        binding.videoCropOverlay.currentVideoFrameBitmap = bmp
+                    }
+                }
+            }
+        }
+
+        binding.videoCropOverlay.onColorPicked = { sampledColor ->
+            val hex = String.format("#%06X", 0xFFFFFF and sampledColor)
+            binding.layoutMarkedColorInfo.visibility = View.VISIBLE
+            binding.viewSampledColorPreview.setBackgroundColor(sampledColor)
+            binding.tvSampledColorCode.text = "Warna Ditandai: $hex (Transparan)"
+            binding.videoCropOverlay.isEyedropperActive = false
+            Toast.makeText(this, "Warna $hex ditandai untuk dijadikan transparan saat export!", Toast.LENGTH_LONG).show()
+        }
+
+        binding.btnResetColorKey.setOnClickListener {
+            binding.layoutMarkedColorInfo.visibility = View.GONE
+            Toast.makeText(this, "Tanda warna transparan direset", Toast.LENGTH_SHORT).show()
+        }
+
         binding.btnExportVideo4k.setOnClickListener {
             showExportDialog()
         }
@@ -143,6 +190,12 @@ class VideoEditorActivity : AppCompatActivity() {
         binding.layoutExportProgress.visibility = View.VISIBLE
         binding.tvProgressPercent.text = "Memproses video ${resolution.label}..."
 
+        val cropNorm = if (binding.videoCropOverlay.isCropModeActive || !binding.videoCropOverlay.cropRect.isEmpty) {
+            binding.videoCropOverlay.getNormalizedCropRect()
+        } else {
+            null
+        }
+
         lifecycleScope.launch {
             VideoEffectTransformer.transformVideo(
                 context = this@VideoEditorActivity,
@@ -153,7 +206,8 @@ class VideoEditorActivity : AppCompatActivity() {
                 rotationDegrees = rotationDegrees,
                 adjustments = adjustments,
                 audioConfig = audioConfig,
-                resolution = resolution
+                resolution = resolution,
+                cropRectNormalized = cropNorm
             ).collectLatest { state ->
                 when (state) {
                     is VideoEffectTransformer.TransformState.Progress -> {

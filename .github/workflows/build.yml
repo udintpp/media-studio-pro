@@ -47,19 +47,23 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.1.0
-          name: "MediaStudio Pro v1.1.0 - AI Background Remover & Kuas Pemulih"
+          tag_name: v1.2.0
+          name: "MediaStudio Pro v1.2.0 - Cropper Foto & Video Interaktif & Tandai Warna Transparan"
           body: |
-            ## 🎨 MediaStudio Pro v1.1.0 - AI Background Remover & Kuas Pemulih
+            ## 🎨 MediaStudio Pro v1.2.0 - Cropper Interaktif & Tandai Warna Transparan (Pipet)
 
-            Rilis pembaruan **MediaStudio Pro v1.1.0** menghadirkan teknologi AI cerdas untuk memisahkan latar belakang tanpa menghapus bagian tubuh, baju, rambut, atau wajah seseorang!
-
-            ### 🚀 Pembaruan Utama v1.1.0:
-            - 🧠 **AI Hapus BG (Google ML Kit Neural Network):** Menggunakan model AI canggih di perangkat untuk mendeteksi figur manusia, wajah, rambut, dan pakaian secara presisi. Bagian orang dijamin tidak akan terhapus meskipun warna pakaian mirip dengan latar belakang!
-            - ⚡ **Smart Boundary Flood Fill:** Algoritma segmentasi tepi yang melacak background hanya dari perbatasan luar foto dan melindungi warna kulit manusia (*Skin Tone Protection*) serta mengisi lubang interior pakaian (*Hole-Filling*).
-            - 🖌️ **Kuas Pemulih (Restore Brush):** Anda dapat mengusapkan jari ke layar untuk mengembalikan bagian foto yang tidak sengaja terhapus secara instan langsung dari foto asli.
-            - 🧹 **Kuas Penghapus (Eraser Brush):** Usapkan jari untuk membersihkan sisa background yang sulit dijangkau secara manual.
-            - ✋ **Peralihan Mode Sentuh:** Beralih dengan mudah antara mode kuas dan mode geser/stiker normal.
+            Rilis pembaruan **MediaStudio Pro v1.2.0** menambahkan fitur unggulan baru sesuai permintaan:
+            
+            ### 🚀 Fitur Baru v1.2.0:
+            - ✂️ **Cropper Foto & Video Interaktif (Penanda Kotak):**
+              - Dilengkapi kotak seleksi interaktif dengan 4 lingkaran penanda sudut yang dapat digeser bebas dengan jari.
+              - Mendukung crop foto dan video bebas (freeform) serta rasio aspek (1:1, 4:5, 9:16, 16:9, 4:3).
+              - Dilengkapi garis kisi pembantu (*Rule-of-Thirds Grid*) dan bayangan gelap di luar area crop.
+            - 🎯 **Tandai Warna Jadikan BG Transparan (Pipet / Eyedropper):**
+              - Cukup sentuh bagian warna apapun pada foto atau video, kaca pembesar (*magnifying loupe*) akan muncul menampilkan warna dan kode HEX secara akurat.
+              - Begitu dilepas, warna yang ditandai tersebut langsung diubah menjadi transparan (*Alpha Transparency*) dengan kehalusan tepi otomatis!
+              - Bekerja untuk foto maupun video (Chroma Key / Green Screen / Custom color removal).
+            - 🧠 **AI Background Remover & Kuas Pemulih:** Segmentasi figur manusia Google ML Kit, kuas pemulih sentuh, dan proteksi warna kulit.
 
             - ✂️ **Potong & Sambung Video:** Trim video presisi milidetik dan sambungkan beberapa klip video menjadi satu.
             - 🖼️ **Ekstrak Frame Video:** Tangkap foto momen video dalam resolusi asli/4K secara instan atau beruntun.

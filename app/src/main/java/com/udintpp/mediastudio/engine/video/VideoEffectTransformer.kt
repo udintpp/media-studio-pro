@@ -50,7 +50,8 @@ object VideoEffectTransformer {
         rotationDegrees: Float = 0f,
         adjustments: ImageAdjustments = ImageAdjustments(),
         audioConfig: AudioMixConfig = AudioMixConfig(),
-        resolution: ExportResolution = ExportResolution.FHD_1080P
+        resolution: ExportResolution = ExportResolution.FHD_1080P,
+        cropRectNormalized: android.graphics.RectF? = null
     ): Flow<TransformState> = callbackFlow {
         try {
             // Build MediaItem with clipping if specified
@@ -65,8 +66,17 @@ object VideoEffectTransformer {
             }
             val mediaItem = mediaItemBuilder.build()
 
-            // Video Effects (Rotation, Scale, Brightness, Contrast)
+            // Video Effects (Crop, Rotation, Scale, Brightness, Contrast)
             val videoEffects = mutableListOf<Effect>()
+
+            // 1. Video Cropping
+            if (cropRectNormalized != null && (cropRectNormalized.width() < 0.98f || cropRectNormalized.height() < 0.98f)) {
+                val leftGl = -1.0f + 2.0f * cropRectNormalized.left
+                val rightGl = -1.0f + 2.0f * cropRectNormalized.right
+                val bottomGl = 1.0f - 2.0f * cropRectNormalized.bottom
+                val topGl = 1.0f - 2.0f * cropRectNormalized.top
+                videoEffects.add(androidx.media3.effect.Crop(leftGl, rightGl, bottomGl, topGl))
+            }
 
             if (rotationDegrees != 0f) {
                 val rotateEffect = ScaleAndRotateTransformation.Builder()
