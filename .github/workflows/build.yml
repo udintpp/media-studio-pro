@@ -47,16 +47,49 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.4.0
-          name: "MediaStudio Pro v1.4.0 - Adobe After Effects Studio Tools & VFX Engine"
+          tag_name: v1.5.0
+          name: "MediaStudio Pro v1.5.0 - After Effects Full Customization: Durasi, Rasio, Partikel, Huruf Timbul 3D & Stiker Animasi"
           body: |
-            ## ⚡ MediaStudio Pro v1.4.0 - Fitur & Tools Adobe After Effects Studio Lengkap
+            ## ⚡ MediaStudio Pro v1.5.0 - Customization Engine Adobe After Effects Studio
 
-            Rilis pembaruan besar **MediaStudio Pro v1.4.0** menghadirkan modul studio baru: **Adobe After Effects Studio Pro** yang membawa kapabilitas efek visual (VFX), animasi motion graphics, dan komposisi video tingkat bioskop langsung ke smartphone Android Anda!
+            Pembaruan besar **MediaStudio Pro v1.5.0** menghadirkan kustomisasi penuh pada modul **After Effects Studio Pro**, memberikan kontrol tanpa batas atas durasi komposisi, resolusi & rasio layar, parameter simulasi partikel, tipografi huruf timbul 3D, serta stiker animasi interaktif!
 
             ---
 
-            ### 🚀 Fitur Unggulan Adobe After Effects Studio (v1.4.0):
+            ### 🚀 Fitur Baru di v1.5.0:
+
+            1. ⚙️ **Kustom Durasi Komposisi (Custom Duration):**
+               - Preset cepat: **3s, 5s, 10s, 15s, 30s, 60s**, serta input manual detik bebas hingga 300 detik.
+               - Sinkronisasi real-time pada seekbar timeline scrubbing, keyframe engine, dan renderer frame.
+
+            2. 📐 **Kustom Resolusi & Rasio Aspek (Aspect Ratio):**
+               - Rasio layar standar industri: **16:9 Landscape (YouTube)**, **9:16 Vertikal (TikTok/Reels/Shorts)**, **1:1 Persegi (Instagram Feed)**, **4:5 Portrait**, dan **21:9 Ultrawide Bioskop**.
+               - Resolusi render: **4K UHD (3840x2160)**, **2K QHD (2560x1440)**, **Full HD 1080p**, **HD 720p**, atau input manual px.
+
+            3. 🎛️ **Parameter Partikel & Kecepatan Efek (Particle World Tuning):**
+               - **Kecepatan Efek Global:** 0.25x hingga 3.0x (Hyper Speed).
+               - **Jumlah Partikel (Density Count):** Slider/preset 15 hingga 200 partikel (Sparks, Rain, Snow, Bokeh).
+               - **Kecepatan Gerak Partikel (Velocity):** 0.2x (Super Slow) hingga 3.0x (Maksimal).
+               - **Ukuran Butiran Partikel:** 0.5x hingga 2.0x.
+
+            4. ✨ **Motion Text Huruf Timbul 3D & Tipografi Lengkap:**
+               - **Efek Huruf Timbul 3D (3D Extruded Bevel & Shadow):** Multi-layer depth (3px hingga 20px) dengan stroke kontur luar dan shadow halus.
+               - **Pilihan Font Typography:** Monospace Hacker, Serif Sinematik, Sans-Serif Modern, Casual Script, dan Default Bold.
+               - **Ukuran Huruf (Font Size):** 24sp hingga 110sp.
+               - **Palet Warna Huruf:** Putih Murni, Emas Kemilau, Biru Neon Cyan, Pink Magenta, Hijau Limau Neon, Merah Crimson, Ungu, Hitam Pekat.
+               - **7 Gaya Animasi Motion Text:** Typewriter, Kinetic Zoom Pop, Neon Pulse, Cyber Glitch, 3D Space Flip, Wave Bounce, Fade & Slide.
+
+            5. 🎉 **Stiker & Emoji Animasi Interaktif (Animated Stickers):**
+               - Pustaka stiker emoji dinamis: 🔥, ⚡, ✨, 🎬, 🚀, ❤️, 👑, 💯, 💥, 🌟, 🕶️, 🏆, 💎, 🍿, 🎯, 💣, 💫, 🪐, 🛸, 🎮.
+               - 6 Tipe Animasi Fisik: **Denyut (Pulse)**, **Melompat Pantul (Bounce)**, **Berputar 360° (Spin)**, **Goyang (Wobble)**, **Mengapung Melayang (Float)**, atau Diam (None).
+               - Pengaturan skala ukuran stiker (0.6x hingga 2.5x).
+
+            6. 📍 **Reposisi Bebas Touch Drag di Layar Preview:**
+               - Sentuh dan geser langsung teks atau stiker di atas layar preview untuk memindahkan posisi secara instan dan presisi.
+               - Pilihan posisi preset (Atas, Tengah, Bawah, Kiri, Kanan).
+
+            7. 🎬 **Hardware Video Export Engine:**
+               - Export komposisi foto atau video menjadi format **MP4**, **MOV**, **GIF**, dan resolusi hingga **4K Ultra HD** dengan hardware MediaCodec & transformer.
 
             1. ⏱️ **Keyframe Animation Timeline Engine & Easing:**
                - Sisipkan titik keyframe dinamis untuk **Posisi (X, Y)**, **Skala (Scale)**, **Rotasi (Rotation)**, **3D Tilt X**, **3D Pan Y**, dan **Opasitas (Opacity)** di setiap milidetik timeline.

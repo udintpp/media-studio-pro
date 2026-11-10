@@ -161,16 +161,42 @@ data class AeKeyframe(
 )
 
 data class AeMotionText(
+    val id: String = java.util.UUID.randomUUID().toString(),
     var text: String = "AFTER EFFECTS TITLE",
-    var style: String = "TYPEWRITER", // "TYPEWRITER", "KINETIC_ZOOM", "NEON_PULSE", "GLITCH", "FADE_SLIDE"
+    var style: String = "TYPEWRITER", // "TYPEWRITER", "KINETIC_ZOOM", "NEON_PULSE", "GLITCH", "FADE_SLIDE", "3D_FLIP", "WAVE_BOUNCE"
     var color: Int = Color.WHITE,
     var glowColor: Int = Color.parseColor("#06B6D4"),
-    var fontSize: Float = 36f,
+    var fontSize: Float = 44f,
     var x: Float = 0.5f,
-    var y: Float = 0.5f
+    var y: Float = 0.5f,
+    var fontFamily: String = "DEFAULT_BOLD", // "DEFAULT_BOLD", "MONOSPACE", "SERIF", "SANS_SERIF", "CASUAL"
+    var isEmbossEnabled: Boolean = true, // Efek huruf timbul 3D
+    var embossDepth: Float = 4f,
+    var strokeColor: Int = Color.BLACK,
+    var strokeWidth: Float = 2.5f,
+    var shadowColor: Int = Color.BLACK,
+    var shadowRadius: Float = 10f,
+    var opacity: Float = 1.0f
+)
+
+data class AeSticker(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    var content: String = "🔥",
+    var x: Float = 0.5f,
+    var y: Float = 0.35f,
+    var scale: Float = 1.0f,
+    var rotation: Float = 0f,
+    var opacity: Float = 1.0f,
+    var animationType: String = "PULSE" // "NONE", "PULSE", "BOUNCE", "SPIN", "WOBBLE", "FLOAT"
 )
 
 data class AeConfig(
+    // Composition Settings (Custom Durasi, Resolusi & Rasio)
+    var compDurationMs: Long = 5000L,
+    var compWidth: Int = 1920,
+    var compHeight: Int = 1080,
+    var compAspectRatio: String = "16:9", // "16:9", "9:16", "1:1", "4:5", "21:9", "CUSTOM"
+
     // 3D Layer Switch (After Effects 3D Space)
     var is3DLayerEnabled: Boolean = false,
     var rotateX: Float = 0f, // Pitch / Tilt 3D
@@ -183,6 +209,9 @@ data class AeConfig(
     // Speed Ramping & Time Remapping
     var speedMultiplier: Float = 1.0f,
     var isTimeReversed: Boolean = false,
+
+    // Global Effect Speed
+    var effectSpeed: Float = 1.0f, // 0.2x to 3.0x
 
     // Effect toggles
     var isOpticalGlowEnabled: Boolean = false,
@@ -225,9 +254,11 @@ data class AeConfig(
 
     var lumetriPreset: String = "NONE", // "NONE", "TEAL_ORANGE", "CYBERPUNK", "FILM_NOIR", "MATRIX", "VINTAGE_WARM"
 
+    // Particle Controls
     var activeParticleType: AeEffectType? = null,
-    var particleCount: Int = 40,
+    var particleCount: Int = 50,
     var particleSpeed: Float = 1.0f,
+    var particleSize: Float = 1.0f,
 
     var isFilmGrainEnabled: Boolean = false,
     var grainAmount: Float = 0.25f,
@@ -245,5 +276,8 @@ data class AeConfig(
     val keyframes: MutableList<AeKeyframe> = mutableListOf(),
 
     // Motion Text
-    val motionTexts: MutableList<AeMotionText> = mutableListOf()
+    val motionTexts: MutableList<AeMotionText> = mutableListOf(),
+
+    // Stickers
+    val stickers: MutableList<AeSticker> = mutableListOf()
 )

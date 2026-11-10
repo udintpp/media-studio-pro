@@ -38,7 +38,24 @@
   - `3GP` (Mobile Format Ringan)
   - `GIF Animasi Video` (Cuplikan video bergerak transparan)
 
-### 3. ⚡ Adobe After Effects Studio Pro (Motion Graphics & VFX)
+### 3. ⚡ Adobe After Effects Studio Pro (Motion Graphics, Customization & VFX Engine)
+- **⚙️ Kustom Durasi Komposisi (Custom Duration):** Pengaturan durasi komposisi bebas: preset cepat (3s, 5s, 10s, 15s, 30s, 60s) atau input manual hingga 300 detik dengan sinkronisasi langsung pada timeline seekbar dan export rendering.
+- **📐 Kustom Resolusi & Rasio Aspek Layar:** Rasio standar industri: **16:9 Landscape (YouTube)**, **9:16 Vertikal (TikTok/Reels/Shorts)**, **1:1 Persegi (Instagram)**, **4:5 Sinematik Portrait**, dan **21:9 Ultrawide Bioskop**, serta opsi resolusi render hingga **4K UHD (3840x2160)**.
+- **🎛️ Parameter Partikel & Kecepatan Efek Global:**
+  - *Kecepatan Efek Global:* Pengatur laju waktu efek 0.25x hingga 3.0x.
+  - *Jumlah Partikel (Density):* 15 hingga 200 partikel (Sparks, Rain, Snow, Bokeh).
+  - *Kecepatan Partikel (Velocity):* 0.2x (Super Slow) hingga 3.0x (Hiper).
+  - *Ukuran Butiran Partikel:* 0.5x hingga 2.0x.
+- **✨ Motion Text Huruf Timbul 3D & Tipografi Lengkap:**
+  - *Efek Huruf Timbul 3D (3D Extruded Bevel):* Multi-layer bevel extrusion depth (3px hingga 20px) dengan garis tepi kontur luar dan soft shadow.
+  - *Pilihan Font Typography:* Monospace Hacker, Serif Sinematik, Sans-Serif Modern, Casual Script, dan Default Bold.
+  - *Warna Huruf & Ukuran:* Palet warna lengkap (Putih, Emas, Cyan Neon, Magenta, Hijau Limau, Merah Crimson, Hitam) dan ukuran text 24sp hingga 110sp.
+  - *7 Gaya Animasi Motion Text:* Typewriter (mesin tik), Kinetic Zoom Pop, Neon Pulse, Cyber Glitch, 3D Space Flip, Wave Bounce (gelombang pantul), Fade & Slide.
+- **🎉 Stiker & Emoji Animasi Interaktif:**
+  - Koleksi stiker emoji dinamis: 🔥, ⚡, ✨, 🎬, 🚀, ❤️, 👑, 💯, 💥, 🌟, 🕶️, 🏆, 💎, 🍿, 🎯, 💣, 💫, 🪐, 🛸, 🎮.
+  - 6 Mode Animasi: **Denyut (Pulse)**, **Melompat Pantul (Bounce)**, **Berputar 360° (Spin)**, **Goyang (Wobble)**, **Mengapung Melayang (Float)**, atau Diam (None).
+  - Skala ukuran stiker (0.6x hingga 2.5x).
+- **📍 Reposisi Bebas Touch Drag di Layar Preview:** Sentuh dan seret langsung teks judul atau stiker di atas layar pratinjau (*live canvas*) untuk mengatur letak posisi secara instan dan bebas.
 - **🧊 3D Layer Space (After Effects 3D Switch):** Transformasi layer dalam ruang 3 dimensi menggunakan matriks kamera perspektif: **3D Tilt X (Pitch)**, **3D Pan Y (Yaw)**, dan jarak kamera kedalaman Z.
 - **🎭 Masking & Rotoscoping:** Isolasi area dengan Shape Masks (**Kotak Persegi / Lingkaran Oval**), **Mask Feathering** (tepi halus), dan **Invert Mask** (pembalikan area dalam/luar).
 - **⚡ Speed Ramping & Time Remapping:** Kontrol kecepatan klip dinamis: Super Slow-Mo (0.25x), Slow Motion Sinematik (0.5x), Kecepatan Normal (1.0x), Cepat (1.5x), Hyperlapse (2.0x), dan **Putar Mundur (Reverse Time)**.
@@ -58,7 +75,6 @@
   - *Snow Drift:* Butiran salju melayang lembut dengan efek turbulensi angin acak.
   - *Bokeh Orbs:* Lingkaran bias cahaya bokeh aperture lebar dengan kedalaman ruang optik.
 - **🎞️ 35mm Celluloid Film Grain:** Tekstur butiran film analog 35mm dengan getaran eksposur halus.
-- **🔤 Kinetic Motion Graphics Typography:** Teks bergerak gaya Typewriter, Kinetic Pop Zoom, Neon Pulse, dan Glitch.
 - **🎵 Audio Waveform Spectrum:** Visualisasi gelombang frekuensi suara neon reaktif terhadap musik.
 - **🎭 Layer Blending Modes:** Normal, Add (Linear Dodge), Screen, Multiply, Overlay, Lighten, Darken, Difference / XOR.
 

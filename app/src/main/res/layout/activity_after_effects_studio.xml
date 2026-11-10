@@ -34,6 +34,16 @@
             android:textStyle="bold" />
 
         <Button
+            android:id="@+id/btn_comp_settings"
+            style="@style/Widget.Material3.Button.TonalButton"
+            android:layout_width="wrap_content"
+            android:layout_height="40dp"
+            android:layout_marginEnd="6dp"
+            android:text="⚙️ Komposisi"
+            android:textColor="@color/accent_cyan"
+            android:textSize="11sp" />
+
+        <Button
             android:id="@+id/btn_export_vfx"
             android:layout_width="wrap_content"
             android:layout_height="40dp"
@@ -427,6 +437,16 @@
                     android:textSize="11sp" />
 
                 <Button
+                    android:id="@+id/btn_vfx_particle_settings"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🎛️ Parameter Partikel"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="11sp" />
+
+                <Button
                     android:id="@+id/btn_vfx_film_grain"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
@@ -442,6 +462,26 @@
                     android:layout_height="40dp"
                     android:layout_marginEnd="6dp"
                     android:text="🔤 Motion Text"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_text_style"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="✨ Timbul &amp; Font"
+                    android:textColor="@color/accent_amber"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_sticker"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🎉 Stiker Animasi"
+                    android:textColor="#EC4899"
                     android:textSize="11sp" />
 
                 <Button

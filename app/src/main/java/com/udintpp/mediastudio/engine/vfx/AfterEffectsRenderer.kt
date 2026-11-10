@@ -17,12 +17,14 @@ import android.graphics.RadialGradient
 import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Shader
+import android.graphics.Typeface
 import com.udintpp.mediastudio.data.model.AeConfig
 import com.udintpp.mediastudio.data.model.AeEffectType
 import com.udintpp.mediastudio.data.model.AeKeyframe
 import com.udintpp.mediastudio.data.model.AeMask
 import com.udintpp.mediastudio.data.model.AeMaskShape
 import com.udintpp.mediastudio.data.model.AeMotionText
+import com.udintpp.mediastudio.data.model.AeSticker
 import java.util.Random
 import kotlin.math.abs
 import kotlin.math.cos
@@ -129,7 +131,7 @@ object AfterEffectsRenderer {
 
         // 9. Particle World Simulation
         if (config.activeParticleType != null) {
-            renderParticleWorld(canvas, w, h, timeMs, config.activeParticleType!!, config.particleCount, config.particleSpeed)
+            renderParticleWorld(canvas, w, h, timeMs, config.activeParticleType!!, config.particleCount, config.particleSpeed * config.effectSpeed)
         }
 
         // 10. 35mm Celluloid Film Grain
@@ -149,7 +151,12 @@ object AfterEffectsRenderer {
 
         // 13. Motion Graphics Text
         for (motionText in config.motionTexts) {
-            renderMotionText(canvas, w, h, timeMs, motionText)
+            renderMotionText(canvas, w, h, timeMs, motionText, config.effectSpeed)
+        }
+
+        // 14. Animated Stickers & Emoji Overlays
+        for (sticker in config.stickers) {
+            renderSticker(canvas, w, h, timeMs, sticker, config.effectSpeed)
         }
 
         return output
@@ -677,30 +684,45 @@ object AfterEffectsRenderer {
         }
     }
 
-    // --- 9. Motion Graphics Text Engine ---
-    private fun renderMotionText(canvas: Canvas, w: Int, h: Int, timeMs: Long, item: AeMotionText) {
+    // --- 9. Motion Graphics Text Engine with 3D Emboss, Custom Fonts & Animations ---
+    private fun renderMotionText(
+        canvas: Canvas,
+        w: Int,
+        h: Int,
+        timeMs: Long,
+        item: AeMotionText,
+        effectSpeed: Float
+    ) {
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = item.color
             textSize = item.fontSize
             textAlign = Paint.Align.CENTER
             isFakeBoldText = true
-            setShadowLayer(16f, 0f, 0f, item.glowColor)
+            alpha = (item.opacity * 255).toInt().coerceIn(0, 255)
+            typeface = when (item.fontFamily) {
+                "MONOSPACE" -> Typeface.MONOSPACE
+                "SERIF" -> Typeface.SERIF
+                "SANS_SERIF" -> Typeface.SANS_SERIF
+                "CASUAL" -> Typeface.create("casual", Typeface.BOLD)
+                else -> Typeface.DEFAULT_BOLD
+            }
         }
 
         val px = w * item.x
         val py = h * item.y
+        val speedMs = (timeMs * effectSpeed).toLong()
 
         when (item.style) {
             "TYPEWRITER" -> {
                 val cycleMs = 3500L
-                val t = (timeMs % cycleMs).toFloat() / cycleMs
+                val t = (speedMs % cycleMs).toFloat() / cycleMs
                 val charsToShow = (t * item.text.length * 1.3f).toInt().coerceIn(0, item.text.length)
                 val substring = item.text.substring(0, charsToShow)
-                canvas.drawText(substring, px, py, textPaint)
+                drawEmbossedText(canvas, px, py, substring, textPaint, item)
             }
             "KINETIC_ZOOM" -> {
                 val cycleMs = 1500L
-                val t = (timeMs % cycleMs).toFloat() / cycleMs
+                val t = (speedMs % cycleMs).toFloat() / cycleMs
                 val scale = if (t < 0.2f) {
                     0.5f + (t / 0.2f) * 0.7f // Pop in
                 } else if (t < 0.35f) {
@@ -711,14 +733,13 @@ object AfterEffectsRenderer {
                 canvas.save()
                 canvas.translate(px, py)
                 canvas.scale(scale, scale)
-                canvas.drawText(item.text, 0f, 0f, textPaint)
+                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item)
                 canvas.restore()
             }
             "NEON_PULSE" -> {
-                val pulse = 0.7f + 0.3f * sin((timeMs / 180f).toDouble()).toFloat()
+                val pulse = 0.7f + 0.3f * sin((speedMs / 180f).toDouble()).toFloat()
                 textPaint.alpha = (pulse * 255).toInt().coerceIn(80, 255)
-                textPaint.setShadowLayer(25f * pulse, 0f, 0f, item.glowColor)
-                canvas.drawText(item.text, px, py, textPaint)
+                drawEmbossedText(canvas, px, py, item.text, textPaint, item)
             }
             "GLITCH" -> {
                 val glitchOffset = if (random.nextInt(10) > 7) (random.nextFloat() - 0.5f) * 16f else 0f
@@ -729,12 +750,134 @@ object AfterEffectsRenderer {
                 textPaint.color = Color.parseColor("#06B6D4")
                 canvas.drawText(item.text, 4f, 0f, textPaint)
                 textPaint.color = item.color
-                canvas.drawText(item.text, 0f, 0f, textPaint)
+                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item)
+                canvas.restore()
+            }
+            "3D_FLIP" -> {
+                val cycleMs = 2200L
+                val t = (speedMs % cycleMs).toFloat() / cycleMs
+                val rotY = if (t < 0.4f) (1f - (t / 0.4f)) * 90f else 0f
+                val cam = Camera()
+                cam.save()
+                cam.rotateY(rotY)
+                val mtx = Matrix()
+                cam.getMatrix(mtx)
+                cam.restore()
+                canvas.save()
+                canvas.translate(px, py)
+                canvas.concat(mtx)
+                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item)
+                canvas.restore()
+            }
+            "WAVE_BOUNCE" -> {
+                val bounce = sin((speedMs / 130f).toDouble()).toFloat() * 16f
+                canvas.save()
+                canvas.translate(px, py + bounce)
+                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item)
+                canvas.restore()
+            }
+            "FADE_SLIDE" -> {
+                val cycleMs = 2500L
+                val t = ((speedMs % cycleMs).toFloat() / cycleMs).coerceIn(0f, 1f)
+                val slideY = if (t < 0.25f) (1f - (t / 0.25f)) * 35f else 0f
+                textPaint.alpha = ((t.coerceIn(0f, 0.25f) / 0.25f) * 255).toInt()
+                canvas.save()
+                canvas.translate(px, py + slideY)
+                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item)
                 canvas.restore()
             }
             else -> {
-                canvas.drawText(item.text, px, py, textPaint)
+                drawEmbossedText(canvas, px, py, item.text, textPaint, item)
             }
         }
+    }
+
+    private fun drawEmbossedText(
+        canvas: Canvas,
+        x: Float,
+        y: Float,
+        text: String,
+        textPaint: Paint,
+        item: AeMotionText
+    ) {
+        // 1. Efek Huruf Timbul 3D (3D Extrusion Depth / Bevel)
+        if (item.isEmbossEnabled) {
+            val depth = item.embossDepth.coerceIn(1f, 15f)
+            val shadowPaint = Paint(textPaint).apply {
+                color = item.shadowColor
+                style = Paint.Style.FILL
+                clearShadowLayer()
+            }
+            for (d in 1..depth.toInt()) {
+                canvas.drawText(text, x + d, y + d, shadowPaint)
+            }
+        }
+
+        // 2. Stroke / Border garis luar teks
+        if (item.strokeWidth > 0f) {
+            val strokePaint = Paint(textPaint).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = item.strokeWidth
+                color = item.strokeColor
+                clearShadowLayer()
+            }
+            canvas.drawText(text, x, y, strokePaint)
+        }
+
+        // 3. Main face text dengan outer neon glow
+        textPaint.setShadowLayer(item.shadowRadius, 0f, 0f, item.glowColor)
+        canvas.drawText(text, x, y, textPaint)
+    }
+
+    // --- 10. Animated Sticker & Emoji Engine ---
+    private fun renderSticker(
+        canvas: Canvas,
+        w: Int,
+        h: Int,
+        timeMs: Long,
+        sticker: AeSticker,
+        effectSpeed: Float
+    ) {
+        val px = w * sticker.x
+        val py = h * sticker.y
+        val speedMs = (timeMs * effectSpeed).toLong()
+
+        var curScale = sticker.scale
+        var curRot = sticker.rotation
+        var offsetX = 0f
+        var offsetY = 0f
+
+        when (sticker.animationType) {
+            "PULSE" -> {
+                curScale *= (1.0f + 0.18f * sin(speedMs / 180.0).toFloat())
+            }
+            "BOUNCE" -> {
+                offsetY = -abs(sin(speedMs / 140.0).toFloat()) * 28f
+            }
+            "SPIN" -> {
+                curRot = (curRot + (speedMs / 8f)) % 360f
+            }
+            "WOBBLE" -> {
+                curRot += sin(speedMs / 120.0).toFloat() * 16f
+            }
+            "FLOAT" -> {
+                offsetX = sin(speedMs / 250.0).toFloat() * 14f
+                offsetY = cos(speedMs / 200.0).toFloat() * 14f
+            }
+            else -> {}
+        }
+
+        canvas.save()
+        canvas.translate(px + offsetX, py + offsetY)
+        canvas.rotate(curRot)
+        canvas.scale(curScale, curScale)
+
+        val stickerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 68f
+            textAlign = Paint.Align.CENTER
+            alpha = (sticker.opacity * 255).toInt().coerceIn(0, 255)
+        }
+        canvas.drawText(sticker.content, 0f, 24f, stickerPaint)
+        canvas.restore()
     }
 }
