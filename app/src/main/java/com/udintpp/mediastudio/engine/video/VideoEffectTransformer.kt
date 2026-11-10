@@ -91,6 +91,10 @@ object VideoEffectTransformer {
                 videoEffects.add(RgbFilter.createGrayscaleFilter())
             }
 
+            if (resolution.height > 0) {
+                videoEffects.add(androidx.media3.effect.Presentation.createForHeight(resolution.height))
+            }
+
             val effects = Effects(emptyList(), videoEffects)
 
             val editedMediaItemBuilder = EditedMediaItem.Builder(mediaItem)
@@ -115,10 +119,6 @@ object VideoEffectTransformer {
 
             val transReqBuilder = TransformationRequest.Builder()
                 .setVideoMimeType(videoMime)
-
-            if (resolution.height > 0) {
-                transReqBuilder.setResolution(resolution.height)
-            }
 
             transformerBuilder.setTransformationRequest(transReqBuilder.build())
 
@@ -160,6 +160,12 @@ object VideoEffectTransformer {
         resolution: ExportResolution = ExportResolution.FHD_1080P
     ): Flow<TransformState> = callbackFlow {
         try {
+            val concatEffects = if (resolution.height > 0) {
+                Effects(emptyList(), listOf(androidx.media3.effect.Presentation.createForHeight(resolution.height)))
+            } else {
+                Effects(emptyList(), emptyList())
+            }
+
             val editedItems = clips.map { clip ->
                 val miBuilder = MediaItem.Builder().setUri(clip.uri)
                 if (clip.endTrimMs > clip.startTrimMs && clip.endTrimMs > 0) {
@@ -170,21 +176,20 @@ object VideoEffectTransformer {
                             .build()
                     )
                 }
-                EditedMediaItem.Builder(miBuilder.build()).build()
+                EditedMediaItem.Builder(miBuilder.build())
+                    .setEffects(concatEffects)
+                    .build()
             }
 
             val sequence = EditedMediaItemSequence(editedItems)
             val composition = Composition.Builder(listOf(sequence)).build()
 
             val transformerBuilder = Transformer.Builder(context)
-            if (resolution.height > 0) {
-                transformerBuilder.setTransformationRequest(
-                    TransformationRequest.Builder()
-                        .setResolution(resolution.height)
-                        .setVideoMimeType(MimeTypes.VIDEO_H264)
-                        .build()
-                )
-            }
+            transformerBuilder.setTransformationRequest(
+                TransformationRequest.Builder()
+                    .setVideoMimeType(MimeTypes.VIDEO_H264)
+                    .build()
+            )
 
             transformerBuilder.addListener(object : Transformer.Listener {
                 override fun onCompleted(composition: Composition, exportResult: ExportResult) {
