@@ -70,8 +70,9 @@ class PhotoEditorActivity : AppCompatActivity() {
                 withContext(Dispatchers.Main) {
                     if (bmp != null) {
                         originalBitmap = bmp
-                        currentProcessedBitmap = bmp
-                        binding.photoCanvas.baseBitmap = bmp
+                        currentProcessedBitmap = bmp.copy(Bitmap.Config.ARGB_8888, true)
+                        binding.photoCanvas.originalUncutBitmap = bmp
+                        binding.photoCanvas.baseBitmap = currentProcessedBitmap
                     } else {
                         Toast.makeText(this@PhotoEditorActivity, "Gagal membaca foto", Toast.LENGTH_SHORT).show()
                         finish()
@@ -229,18 +230,58 @@ class PhotoEditorActivity : AppCompatActivity() {
     }
 
     private fun setupBgRemovalSubMenu() {
-        addSubButton("✂️ Hapus Background") {
+        addSubButton("🧠 AI Hapus BG (Deteksi Orang Presisi)") {
             originalBitmap?.let { src ->
-                Toast.makeText(this, "Memproses pemisahan background...", Toast.LENGTH_SHORT).show()
-                lifecycleScope.launch(Dispatchers.Default) {
-                    val transparentCutout = BackgroundRemover.removeBackground(src, tolerance = 48f)
-                    withContext(Dispatchers.Main) {
-                        currentProcessedBitmap = transparentCutout
-                        binding.photoCanvas.baseBitmap = transparentCutout
-                        Toast.makeText(this@PhotoEditorActivity, "Background berhasil dihapus transparan!", Toast.LENGTH_SHORT).show()
+                binding.photoCanvas.brushMode = BrushMode.NONE
+                Toast.makeText(this, "AI sedang mendeteksi figur orang & pakaian secara presisi...", Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch {
+                    val result = BackgroundRemover.removeBackgroundAI(src, confidenceThreshold = 0.5f)
+                    if (result.isSuccess) {
+                        val transparentCutout = result.getOrNull()
+                        if (transparentCutout != null) {
+                            currentProcessedBitmap = transparentCutout.copy(Bitmap.Config.ARGB_8888, true)
+                            binding.photoCanvas.baseBitmap = currentProcessedBitmap
+                            Toast.makeText(this@PhotoEditorActivity, "✅ Sukses! Figur orang & pakaian tetap utuh terlindungi.", Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        // Fallback to Smart Flood Fill if AI encountered error
+                        Toast.makeText(this@PhotoEditorActivity, "AI gagal, menggunakan Flood Fill cerdas...", Toast.LENGTH_SHORT).show()
+                        val cutout = BackgroundRemover.removeBackgroundSmartColor(src, tolerance = 35f)
+                        currentProcessedBitmap = cutout.copy(Bitmap.Config.ARGB_8888, true)
+                        binding.photoCanvas.baseBitmap = currentProcessedBitmap
                     }
                 }
             }
+        }
+
+        addSubButton("⚡ Flood Fill BG (Warna Tepi)") {
+            originalBitmap?.let { src ->
+                binding.photoCanvas.brushMode = BrushMode.NONE
+                Toast.makeText(this, "Memproses pemisahan background warna tepi...", Toast.LENGTH_SHORT).show()
+                lifecycleScope.launch(Dispatchers.Default) {
+                    val transparentCutout = BackgroundRemover.removeBackgroundSmartColor(src, tolerance = 35f)
+                    withContext(Dispatchers.Main) {
+                        currentProcessedBitmap = transparentCutout.copy(Bitmap.Config.ARGB_8888, true)
+                        binding.photoCanvas.baseBitmap = currentProcessedBitmap
+                        Toast.makeText(this@PhotoEditorActivity, "Background tepi dihapus (warna kulit & interior terlindungi)", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            }
+        }
+
+        addSubButton("🖌️ Kuas Pemulih (Restore)") {
+            binding.photoCanvas.brushMode = BrushMode.RESTORE
+            Toast.makeText(this, "Kuas Pemulih Aktif: Usapkan jari ke bagian orang/baju yang ingin dikembalikan utuh!", Toast.LENGTH_LONG).show()
+        }
+
+        addSubButton("🧹 Kuas Hapus (Eraser)") {
+            binding.photoCanvas.brushMode = BrushMode.ERASE
+            Toast.makeText(this, "Kuas Hapus Aktif: Usapkan jari ke bagian background yang ingin dibersihkan!", Toast.LENGTH_LONG).show()
+        }
+
+        addSubButton("✋ Mode Geser (Normal)") {
+            binding.photoCanvas.brushMode = BrushMode.NONE
+            Toast.makeText(this, "Mode sentuh normal (Geser & stiker)", Toast.LENGTH_SHORT).show()
         }
 
         addSubButton("⚪ Ganti BG Putih") {
@@ -260,9 +301,11 @@ class PhotoEditorActivity : AppCompatActivity() {
         }
 
         addSubButton("🔄 Reset BG") {
+            binding.photoCanvas.brushMode = BrushMode.NONE
             binding.photoCanvas.backgroundColorOverride = null
             binding.photoCanvas.backgroundBitmap = null
-            binding.photoCanvas.baseBitmap = originalBitmap
+            currentProcessedBitmap = originalBitmap?.copy(Bitmap.Config.ARGB_8888, true)
+            binding.photoCanvas.baseBitmap = currentProcessedBitmap
         }
     }
 

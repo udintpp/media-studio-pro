@@ -11,8 +11,8 @@ android {
         applicationId = "com.udintpp.mediastudio"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0.0"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -71,4 +71,7 @@ dependencies {
     // Gson & OkHttp for emoji/sticker online search & APIs
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+
+    // Google ML Kit AI Selfie Segmentation (On-Device Neural Network for Background Removal)
+    implementation("com.google.mlkit:segmentation-selfie:16.0.0-beta4")
 }

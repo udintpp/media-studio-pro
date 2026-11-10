@@ -17,12 +17,19 @@ import android.view.View
 import com.udintpp.mediastudio.data.model.ImageAdjustments
 import com.udintpp.mediastudio.data.model.OverlayType
 import com.udintpp.mediastudio.data.model.StickerItem
+import com.udintpp.mediastudio.engine.photo.BackgroundRemover
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.sin
 import kotlin.math.sqrt
+
+enum class BrushMode {
+    NONE,
+    RESTORE, // Kuas Pemulih: mengembalikan bagian yang terhapus dari foto asli
+    ERASE    // Kuas Penghapus: menghapus sisa background yang belum bersih
+}
 
 class PhotoCanvasView @JvmOverloads constructor(
     context: Context,
@@ -35,6 +42,8 @@ class PhotoCanvasView @JvmOverloads constructor(
             field = value
             invalidate()
         }
+
+    var originalUncutBitmap: Bitmap? = null
 
     var backgroundBitmap: Bitmap? = null
         set(value) {
@@ -55,6 +64,9 @@ class PhotoCanvasView @JvmOverloads constructor(
             invalidate()
         }
 
+    var brushMode: BrushMode = BrushMode.NONE
+    var brushRadius: Float = 50f
+
     val stickers = mutableListOf<StickerItem>()
     private var selectedSticker: StickerItem? = null
 
@@ -70,13 +82,21 @@ class PhotoCanvasView @JvmOverloads constructor(
         color = Color.parseColor("#EC4899")
         style = Paint.Style.FILL
     }
+    private val brushCursorPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.parseColor("#8006B6D4")
+        style = Paint.Style.STROKE
+        strokeWidth = 4f
+    }
 
     // Touch gesture tracking
     private var lastTouchX = 0f
     private var lastTouchY = 0f
+    private var isTouching = false
     private var initialDistance = 0f
     private var initialRotation = 0f
     private var initialScale = 1.0f
+
+    private var currentDstRect = RectF()
 
     init {
         updateColorFilter()
@@ -84,12 +104,10 @@ class PhotoCanvasView @JvmOverloads constructor(
 
     private fun updateColorFilter() {
         val cm = ColorMatrix()
-        // Saturation
         val sat = ColorMatrix()
         sat.setSaturation(adjustments.saturation)
         cm.postConcat(sat)
 
-        // Contrast & Brightness
         val c = adjustments.contrast
         val b = adjustments.brightness
         val translate = (1f - c) * 128f + b
@@ -106,7 +124,6 @@ class PhotoCanvasView @JvmOverloads constructor(
     }
 
     fun addSticker(sticker: StickerItem) {
-        // Place sticker at center by default
         if (sticker.x == 0f && sticker.y == 0f) {
             sticker.x = width / 2f
             sticker.y = height / 2f
@@ -150,17 +167,17 @@ class PhotoCanvasView @JvmOverloads constructor(
             val bmpRatio = bmp.width.toFloat() / bmp.height.toFloat()
             val viewRatio = width.toFloat() / height.toFloat()
 
-            val dstRect = if (bmpRatio > viewRatio) {
+            if (bmpRatio > viewRatio) {
                 val dstHeight = width / bmpRatio
                 val top = (height - dstHeight) / 2f
-                RectF(0f, top, width.toFloat(), top + dstHeight)
+                currentDstRect.set(0f, top, width.toFloat(), top + dstHeight)
             } else {
                 val dstWidth = height * bmpRatio
                 val left = (width - dstWidth) / 2f
-                RectF(left, 0f, left + dstWidth, height.toFloat())
+                currentDstRect.set(left, 0f, left + dstWidth, height.toFloat())
             }
 
-            canvas.drawBitmap(bmp, null, dstRect, basePaint)
+            canvas.drawBitmap(bmp, null, currentDstRect, basePaint)
         }
 
         // 3. Draw Stickers & Overlays
@@ -177,23 +194,49 @@ class PhotoCanvasView @JvmOverloads constructor(
             canvas.drawBitmap(bmp, -halfW, -halfH, stickerPaint)
 
             // Selection border and handles
-            if (st.isSelected) {
+            if (st.isSelected && brushMode == BrushMode.NONE) {
                 canvas.drawRect(-halfW - 8f, -halfH - 8f, halfW + 8f, halfH + 8f, borderPaint)
-                // Draw corner handles
                 canvas.drawCircle(-halfW - 8f, -halfH - 8f, 14f, handlePaint)
                 canvas.drawCircle(halfW + 8f, halfH + 8f, 14f, handlePaint)
             }
             canvas.restore()
         }
+
+        // 4. Draw brush touch indicator circle if in brush mode
+        if (brushMode != BrushMode.NONE && isTouching) {
+            canvas.drawCircle(lastTouchX, lastTouchY, brushRadius, brushCursorPaint)
+        }
     }
 
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        lastTouchX = event.x
+        lastTouchY = event.y
+
+        // If in Brush Mode, apply touch restore or erase to baseBitmap
+        if (brushMode != BrushMode.NONE) {
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    isTouching = true
+                    applyBrushAtTouch(event.x, event.y)
+                    invalidate()
+                    return true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    applyBrushAtTouch(event.x, event.y)
+                    invalidate()
+                    return true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    isTouching = false
+                    invalidate()
+                    return true
+                }
+            }
+        }
+
+        // Standard Sticker Manipulation
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
-                lastTouchX = event.x
-                lastTouchY = event.y
-
-                // Hit test stickers in reverse order (top to bottom)
                 var touchedSticker: StickerItem? = null
                 for (i in stickers.indices.reversed()) {
                     val st = stickers[i]
@@ -213,7 +256,6 @@ class PhotoCanvasView @JvmOverloads constructor(
                 if (touchedSticker != null) {
                     touchedSticker.isSelected = true
                     selectedSticker = touchedSticker
-                    // Move touched sticker to top
                     stickers.remove(touchedSticker)
                     stickers.add(touchedSticker)
                 } else {
@@ -238,8 +280,6 @@ class PhotoCanvasView @JvmOverloads constructor(
                         val dy = event.y - lastTouchY
                         selectedSticker!!.x += dx
                         selectedSticker!!.y += dy
-                        lastTouchX = event.x
-                        lastTouchY = event.y
                     } else if (event.pointerCount == 2) {
                         val currentDist = getFingerDistance(event)
                         val currentAngle = getFingerAngle(event)
@@ -256,12 +296,25 @@ class PhotoCanvasView @JvmOverloads constructor(
                     invalidate()
                 }
             }
-
-            MotionEvent.ACTION_UP, MotionEvent.ACTION_POINTER_UP -> {
-                // Done
-            }
         }
         return true
+    }
+
+    private fun applyBrushAtTouch(screenX: Float, screenY: Float) {
+        val bmp = baseBitmap ?: return
+        if (currentDstRect.width() <= 0 || currentDstRect.height() <= 0) return
+
+        // Map screen touch coordinates to bitmap pixel space
+        val bmpX = (screenX - currentDstRect.left) * (bmp.width.toFloat() / currentDstRect.width())
+        val bmpY = (screenY - currentDstRect.top) * (bmp.height.toFloat() / currentDstRect.height())
+        val bmpBrushRad = brushRadius * (bmp.width.toFloat() / currentDstRect.width())
+
+        if (brushMode == BrushMode.RESTORE) {
+            val orig = originalUncutBitmap ?: return
+            BackgroundRemover.restoreBrush(bmp, orig, bmpX, bmpY, bmpBrushRad)
+        } else if (brushMode == BrushMode.ERASE) {
+            BackgroundRemover.eraseBrush(bmp, bmpX, bmpY, bmpBrushRad)
+        }
     }
 
     private fun getFingerDistance(event: MotionEvent): Float {

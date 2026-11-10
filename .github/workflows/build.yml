@@ -47,17 +47,20 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.0.0
-          name: "MediaStudio Pro v1.0.0 - Rilis Perdana (Photo & Video Editor Lengkap 4K)"
+          tag_name: v1.1.0
+          name: "MediaStudio Pro v1.1.0 - AI Background Remover & Kuas Pemulih"
           body: |
-            ## 🎨 MediaStudio Pro v1.0.0 - Studio Editor Foto & Video Lengkap
+            ## 🎨 MediaStudio Pro v1.1.0 - AI Background Remover & Kuas Pemulih
 
-            Selamat datang di rilis perdana **MediaStudio Pro** untuk Android! Aplikasi studio media lengkap dengan dukungan ekspor resolusi tinggi hingga **4K Ultra HD (3840x2160)**.
+            Rilis pembaruan **MediaStudio Pro v1.1.0** menghadirkan teknologi AI cerdas untuk memisahkan latar belakang tanpa menghapus bagian tubuh, baju, rambut, atau wajah seseorang!
 
-            ### ✨ Fitur Unggulan:
-            - ✂️ **Hapus & Ganti Background:** Pemisahan background foto transparan presisi, ganti warna solid, gradient, atau gambar baru dari galeri.
-            - 🎬 **Video Studio Pro:** Chroma key background (green/blue screen), efek pencahayaan, rotasi, ganti audio, dan export 4K.
-            - 🎞️ **Convert Foto ke Video (Slideshow Studio):** Mengubah kumpulan foto menjadi video MP4 dengan animasi zoom sinematik dan musik latar.
+            ### 🚀 Pembaruan Utama v1.1.0:
+            - 🧠 **AI Hapus BG (Google ML Kit Neural Network):** Menggunakan model AI canggih di perangkat untuk mendeteksi figur manusia, wajah, rambut, dan pakaian secara presisi. Bagian orang dijamin tidak akan terhapus meskipun warna pakaian mirip dengan latar belakang!
+            - ⚡ **Smart Boundary Flood Fill:** Algoritma segmentasi tepi yang melacak background hanya dari perbatasan luar foto dan melindungi warna kulit manusia (*Skin Tone Protection*) serta mengisi lubang interior pakaian (*Hole-Filling*).
+            - 🖌️ **Kuas Pemulih (Restore Brush):** Anda dapat mengusapkan jari ke layar untuk mengembalikan bagian foto yang tidak sengaja terhapus secara instan langsung dari foto asli.
+            - 🧹 **Kuas Penghapus (Eraser Brush):** Usapkan jari untuk membersihkan sisa background yang sulit dijangkau secara manual.
+            - ✋ **Peralihan Mode Sentuh:** Beralih dengan mudah antara mode kuas dan mode geser/stiker normal.
+
             - ✂️ **Potong & Sambung Video:** Trim video presisi milidetik dan sambungkan beberapa klip video menjadi satu.
             - 🖼️ **Ekstrak Frame Video:** Tangkap foto momen video dalam resolusi asli/4K secara instan atau beruntun.
             - 🔍 **Pencarian Emotikon & Stiker Google/Web:** Cari emotikon Unicode lengkap dan stiker web GIF/PNG transparan langsung dari keyword pencarian.
