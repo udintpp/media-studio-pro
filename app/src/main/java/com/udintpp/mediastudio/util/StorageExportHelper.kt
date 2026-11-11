@@ -55,62 +55,41 @@ object StorageExportHelper {
 
     /**
      * Syncs finished video or media file to /storage/emulated/0/DCIM/video-pro/,
-     * then indexes it in the Android MediaStore.
+     * strictly ensuring ONLY ONE SINGLE FILE exists (NO DUPLICATES),
+     * and indexes it in Android MediaStore via MediaScannerConnection.
      */
-    fun syncExportedFile(context: Context, sourceFile: File, mimeType: String = "video/mp4"): File? {
-        var savedFile: File? = null
+    fun syncExportedFile(context: Context, sourceFile: File, mimeType: String = "video/mp4"): File {
+        val exportDir = File(PATH_EXPORT_FOLDER)
+        if (!exportDir.exists()) exportDir.mkdirs()
+        val targetFile = File(exportDir, sourceFile.name)
 
-        try {
-            val exportDir = File(PATH_EXPORT_FOLDER)
-            if (!exportDir.exists()) exportDir.mkdirs()
-            val targetFile = File(exportDir, sourceFile.name)
-
-            if (sourceFile.absolutePath != targetFile.absolutePath) {
+        // If sourceFile was created in temporary cacheDir, move it to DCIM/video-pro and delete temp
+        if (sourceFile.absolutePath != targetFile.absolutePath) {
+            try {
                 copyFile(sourceFile, targetFile)
-            }
-            if (targetFile.exists() && targetFile.length() > 0) {
-                savedFile = targetFile
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving to DCIM/video-pro: ${e.message}")
-        }
-
-        // Register to MediaStore on Android 10+ (Q+) for instant gallery visibility
-        try {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                val resolver = context.contentResolver
-                val contentValues = ContentValues().apply {
-                    put(MediaStore.MediaColumns.DISPLAY_NAME, sourceFile.name)
-                    put(MediaStore.MediaColumns.MIME_TYPE, mimeType)
-                    put(MediaStore.MediaColumns.RELATIVE_PATH, "DCIM/video-pro")
-                    put(MediaStore.MediaColumns.IS_PENDING, 0)
+                if (targetFile.exists() && targetFile.length() > 0) {
+                    sourceFile.delete() // Clean up temp file to prevent duplicate
                 }
-                val collectionUri = if (mimeType.startsWith("image/")) {
-                    MediaStore.Images.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                } else {
-                    MediaStore.Video.Media.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)
-                }
-                resolver.insert(collectionUri, contentValues)?.let { uri ->
-                    resolver.openOutputStream(uri)?.use { out ->
-                        FileInputStream(sourceFile).use { input ->
-                            input.copyTo(out)
-                        }
-                    }
-                }
-            }
-        } catch (e: Exception) {
-            Log.w(TAG, "MediaStore insert notice: ${e.message}")
-        }
-
-        // Trigger MediaScanner for saved path
-        val fileToScan = savedFile ?: sourceFile
-        if (fileToScan.exists()) {
-            MediaScannerConnection.scanFile(context, arrayOf(fileToScan.absolutePath), arrayOf(mimeType)) { path, uri ->
-                Log.d(TAG, "Scanned $path -> $uri")
+            } catch (e: Exception) {
+                Log.e(TAG, "Error moving cache file to DCIM/video-pro: ${e.message}")
             }
         }
 
-        return savedFile
+        val finalFile = if (targetFile.exists() && targetFile.length() > 0) targetFile else sourceFile
+
+        // Register the single exact file directly with MediaScannerConnection.
+        // DO NOT use resolver.insert() here, as resolver.insert() would create a second file with " (1)" in the same directory!
+        if (finalFile.exists()) {
+            MediaScannerConnection.scanFile(
+                context,
+                arrayOf(finalFile.absolutePath),
+                arrayOf(mimeType)
+            ) { path, uri ->
+                Log.d(TAG, "Indexed single file in MediaStore: $path -> $uri")
+            }
+        }
+
+        return finalFile
     }
 
     private fun copyFile(src: File, dst: File) {
