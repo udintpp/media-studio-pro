@@ -48,20 +48,19 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.5.4
-          name: "MediaStudio Pro v1.5.4 - Export Direct to DCIM/video-pro & dmc/video-pro, New Year Fireworks & Eid Ketupat Particles"
+          name: "MediaStudio Pro v1.5.4 - Export Direct to DCIM/video-pro, New Year Fireworks & Eid Ketupat Particles"
           body: |
-            ## 🎆 MediaStudio Pro v1.5.4 - Public Storage Export (DCIM/video-pro & dmc/video-pro), New Year Fireworks & Lebaran Ketupat
+            ## 🎆 MediaStudio Pro v1.5.4 - Public Storage Export (DCIM/video-pro), New Year Fireworks & Lebaran Ketupat
 
-            Pembaruan **MediaStudio Pro v1.5.4** membawa perbaikan penting pada penyimpanan hasil export agar langsung tersimpan di penyimpanan publik dan muncul di Galeri, serta penambahan efek partikel tematik spesial Tahun Baru dan Hari Raya Idul Fitri:
+            Pembaruan **MediaStudio Pro v1.5.4** membawa perbaikan penting pada penyimpanan hasil export agar langsung tersimpan di penyimpanan publik DCIM dan muncul di Galeri, serta penambahan efek partikel tematik spesial Tahun Baru dan Hari Raya Idul Fitri:
 
             ---
 
             ### 🚀 Fitur Baru & Peningkatan di v1.5.4:
 
-            1. 📁 **Penyimpanan Export Langsung ke Storage Publik (`DCIM/video-pro` & `dmc/video-pro`):**
+            1. 📁 **Penyimpanan Export Langsung ke Storage Publik (`DCIM/video-pro`):**
                - Semua hasil export video (Editor Video, After Effects Studio VFX, Slideshow Foto, Pemotong/Penyambung Klip, dan Mixer Audio) kini tersimpan langsung di:
                  - `/storage/emulated/0/DCIM/video-pro/`
-                 - `/storage/emulated/0/dmc/video-pro/`
                - Terintegrasi penuh dengan `MediaStore` dan `MediaScannerConnection` sehingga **otomatis langsung muncul di Galeri / Foto dan Pengelola Berkas Android** tanpa delay.
                - Izin penyimpanan penuh (`MANAGE_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, `READ_EXTERNAL_STORAGE`).
 

@@ -18,14 +18,12 @@ import java.util.Locale
 /**
  * Storage export helper ensuring videos and media are saved directly to public shared storage:
  * - /storage/emulated/0/DCIM/video-pro/
- * - /storage/emulated/0/dmc/video-pro/
  * and properly registered with Android MediaStore / MediaScanner for instant Gallery visibility.
  */
 object StorageExportHelper {
 
     private const val TAG = "StorageExportHelper"
-    private const val PATH_DCIM_FOLDER = "/storage/emulated/0/DCIM/video-pro"
-    private const val PATH_DMC_FOLDER = "/storage/emulated/0/dmc/video-pro"
+    const val PATH_EXPORT_FOLDER = "/storage/emulated/0/DCIM/video-pro"
 
     /**
      * Prepares primary output file for video export in DCIM/video-pro.
@@ -34,15 +32,12 @@ object StorageExportHelper {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
         val fileName = "${prefix}_$timeStamp.$extension"
 
-        // Ensure both DCIM/video-pro and dmc/video-pro directories exist
-        val dcimDir = File(PATH_DCIM_FOLDER)
-        if (!dcimDir.exists()) dcimDir.mkdirs()
-
-        val dmcDir = File(PATH_DMC_FOLDER)
-        if (!dmcDir.exists()) dmcDir.mkdirs()
+        // Ensure DCIM/video-pro directory exists
+        val exportDir = File(PATH_EXPORT_FOLDER)
+        if (!exportDir.exists()) exportDir.mkdirs()
 
         // Test if DCIM/video-pro is directly writable
-        val targetFile = File(dcimDir, fileName)
+        val targetFile = File(exportDir, fileName)
         return try {
             if (targetFile.exists()) {
                 targetFile.delete()
@@ -59,40 +54,25 @@ object StorageExportHelper {
     }
 
     /**
-     * Syncs finished video or media file to both /storage/emulated/0/DCIM/video-pro/
-     * and /storage/emulated/0/dmc/video-pro/, then indexes it in the Android MediaStore.
+     * Syncs finished video or media file to /storage/emulated/0/DCIM/video-pro/,
+     * then indexes it in the Android MediaStore.
      */
-    fun syncExportedFile(context: Context, sourceFile: File, mimeType: String = "video/mp4"): List<File> {
-        val savedFiles = mutableListOf<File>()
+    fun syncExportedFile(context: Context, sourceFile: File, mimeType: String = "video/mp4"): File? {
+        var savedFile: File? = null
 
         try {
-            val dcimDir = File(PATH_DCIM_FOLDER)
-            if (!dcimDir.exists()) dcimDir.mkdirs()
-            val targetDcimFile = File(dcimDir, sourceFile.name)
+            val exportDir = File(PATH_EXPORT_FOLDER)
+            if (!exportDir.exists()) exportDir.mkdirs()
+            val targetFile = File(exportDir, sourceFile.name)
 
-            if (sourceFile.absolutePath != targetDcimFile.absolutePath) {
-                copyFile(sourceFile, targetDcimFile)
+            if (sourceFile.absolutePath != targetFile.absolutePath) {
+                copyFile(sourceFile, targetFile)
             }
-            if (targetDcimFile.exists() && targetDcimFile.length() > 0) {
-                savedFiles.add(targetDcimFile)
+            if (targetFile.exists() && targetFile.length() > 0) {
+                savedFile = targetFile
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error saving to DCIM/video-pro: ${e.message}")
-        }
-
-        try {
-            val dmcDir = File(PATH_DMC_FOLDER)
-            if (!dmcDir.exists()) dmcDir.mkdirs()
-            val targetDmcFile = File(dmcDir, sourceFile.name)
-
-            if (sourceFile.absolutePath != targetDmcFile.absolutePath) {
-                copyFile(sourceFile, targetDmcFile)
-            }
-            if (targetDmcFile.exists() && targetDmcFile.length() > 0) {
-                savedFiles.add(targetDmcFile)
-            }
-        } catch (e: Exception) {
-            Log.e(TAG, "Error saving to dmc/video-pro: ${e.message}")
         }
 
         // Register to MediaStore on Android 10+ (Q+) for instant gallery visibility
@@ -122,15 +102,15 @@ object StorageExportHelper {
             Log.w(TAG, "MediaStore insert notice: ${e.message}")
         }
 
-        // Trigger MediaScanner for all saved paths
-        val pathsToScan = savedFiles.map { it.absolutePath }.toTypedArray()
-        if (pathsToScan.isNotEmpty()) {
-            MediaScannerConnection.scanFile(context, pathsToScan, arrayOf(mimeType)) { path, uri ->
+        // Trigger MediaScanner for saved path
+        val fileToScan = savedFile ?: sourceFile
+        if (fileToScan.exists()) {
+            MediaScannerConnection.scanFile(context, arrayOf(fileToScan.absolutePath), arrayOf(mimeType)) { path, uri ->
                 Log.d(TAG, "Scanned $path -> $uri")
             }
         }
 
-        return savedFiles
+        return savedFile
     }
 
     private fun copyFile(src: File, dst: File) {
@@ -144,6 +124,6 @@ object StorageExportHelper {
     }
 
     fun getSuccessNotificationMessage(fileName: String): String {
-        return "📁 Tersimpan di Storage:\n• /DCIM/video-pro/$fileName\n• /dmc/video-pro/$fileName\n(Otomatis tampil di Galeri)"
+        return "📁 Tersimpan di Storage:\n• /DCIM/video-pro/$fileName\n(Otomatis tampil di Galeri)"
     }
 }

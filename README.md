@@ -18,10 +18,9 @@
 - **Ganti Background Video:** Dukungan mengganti latar belakang video dengan Foto dari Galeri, Video lain dari Galeri, atau Warna Solid baru, lengkap dengan thumbnail pratinjau langsung (*Live Preview*).
 
 ### 2. 📁 Format Export Lengkap & Lokasi Penyimpanan Publik
-- **Penyimpanan Langsung ke Storage Publik (`DCIM/video-pro` & `dmc/video-pro`):**
-  - Semua file video dan foto hasil ekspor otomatis tersimpan ganda di:
+- **Penyimpanan Langsung ke Storage Publik (`DCIM/video-pro`):**
+  - Semua file video dan foto hasil ekspor otomatis tersimpan langsung di:
     - `/storage/emulated/0/DCIM/video-pro/`
-    - `/storage/emulated/0/dmc/video-pro/`
   - Terintegrasi langsung dengan `MediaStore` dan `MediaScannerConnection` Android sehingga **langsung muncul di aplikasi Galeri, Google Foto, dan File Manager**.
 - **Format Foto Terlengkap:**
   - `PNG` (Lossless, Mendukung Transparansi Penuh)

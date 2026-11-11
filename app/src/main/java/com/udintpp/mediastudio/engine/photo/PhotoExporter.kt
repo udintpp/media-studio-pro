@@ -169,17 +169,9 @@ object PhotoExporter {
                 out.flush()
             }
 
-            val dmcDir = File("/storage/emulated/0/dmc/video-pro")
-            if (!dmcDir.exists()) dmcDir.mkdirs()
-            val dmcFile = File(dmcDir, filename)
-            FileOutputStream(dmcFile).use { out ->
-                ImageFormatEncoder.encode(bitmap, format, quality, out)
-                out.flush()
-            }
-
             android.media.MediaScannerConnection.scanFile(
                 context,
-                arrayOf(dcimFile.absolutePath, dmcFile.absolutePath),
+                arrayOf(dcimFile.absolutePath),
                 arrayOf(format.mimeType),
                 null
             )
