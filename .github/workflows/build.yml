@@ -47,23 +47,54 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.5.2
-          name: "MediaStudio Pro v1.5.2 - Adobe After Effects Engine: Unmult Alpha, Contour Paint, Curl Noise, 3D DOF, Quick Apply & Guides"
+          tag_name: v1.5.3
+          name: "MediaStudio Pro v1.5.3 - Natural Organic Particles (Bling, Fireflies, Stars, Gold Dust), Text Metallic Shimmer & Star Glints"
           body: |
-            ## ⚡ MediaStudio Pro v1.5.2 - Adopsi Fitur Resmi Adobe After Effects
+            ## ✨ MediaStudio Pro v1.5.3 - Natural Organic Particle World, Metallic Text Shimmer & Star Glints
 
-            Pembaruan **MediaStudio Pro v1.5.2** mengadopsi fitur-fitur resmi terbaru dari **Adobe After Effects** (berdasarkan referensi dokumentasi resmi Adobe):
-            - **Knoll Unmult Alpha Keyer** (Penghapus Latar Hitam/Putih Berdasarkan Luminance Alpha)
-            - **Contour Paint** (Cel-Shading Outlines & Deteksi Kontur Artistik)
-            - **Curl Noise Generator** (Simulasi Dinamis Pusaran Asap & Aliran Cairan Organik)
-            - **3D Camera Depth of Field** (Simulasi Fokus Lensa Kamera & Aperture Bokeh Blur)
-            - **Quick Apply Command Bar** (Pencarian & Akses Cepat Seluruh Tool & Efek AE)
-            - **Composition Guides & Grid Overlay** (Rule of Thirds, Title/Action Safe Areas, Grid 4x4)
-            - **Instant Frame Snapshot** (Tangkapan Layar Resolusi Penuh & Salin ke Clipboard)
+            Pembaruan **MediaStudio Pro v1.5.3** menghadirkan simulasi partikel fisik organik tingkat lanjut dengan pergerakan acak natural (bebas, tidak berbaris kaku), efek kilauan sapuan metalik pada teks (*Metallic Shimmer Sweep*), bintang kilau 4-sudut (*Star Glint Sparkles*), serta palet warna mewah termasuk Emas 24K, Rose Gold, dan Champagne:
 
             ---
 
-            ### 🚀 Fitur Baru Resmi Adobe After Effects di v1.5.2:
+            ### 🚀 Fitur Baru & Peningkatan di v1.5.3:
+
+            1. ✨ **Partikel Cahaya Bling-Bling & Diamond Sparkles:**
+               - Kilauan permata tajam dengan bintang 4-sudut berkilau (*4-point diamond cross flare*) yang berdenyut dinamis dan memancarkan pendaran cahaya mewah.
+
+            2. 🌟 **Kunang-Kunang (Fireflies Bioluminescent Organik):**
+               - Simulasi kunang-kunang melayang bebas di udara dengan pendaran cahaya hangat natural, bernapas lembut (*soft pulsing luminescence*), dan bergerak meliuk-liuk alami.
+
+            3. ⭐ **Bintang & Kosmik (Twinkling Stars & Shooting Star):**
+               - Hamparan bintang berkilau kosmik di langit malam dengan periode kedip acak, dilengkapi lintasan bintang jatuh / meteor berekor komet yang melesat secara berkala.
+
+            4. 👑 **Debu Emas Mewah (Royal Gold Flakes) & Magic Fairy Dust:**
+               - Serpihan debu emas 24K berkilauan yang melayang lembut terbawa hembusan angin halus dengan pantulan kilau metalik, serta debu sihir pelangi mistik.
+
+            5. 🍃 **Gerakan Partikel Alami & Random Arah (Physics-based Organic Motion):**
+               - Setiap partikel memiliki vektor kecepatan, frekuensi osilasi ganda, dan fase hidup independen sehingga **tidak lagi bergerak berbaris kaku bersamaan**.
+               - 5 Pilihan Pola Gerakan: **Gerak Acak Alami (Random Wander / Brownian Motion)**, **Memancar Bebas 360° (Radial Burst)**, **Melayang Naik Organik (Upward Float with Wind)**, **Pusaran Kosmik (Vortex Swirl)**, dan **Melayang Turun Lembut (Downward Drift)**.
+               - Pengaturan tingkat **Turbulensi & Keacakan Arah** (0.4x s/d 2.8x) untuk menentukan keliaran aliran partikel.
+
+            6. 🎨 **9 Palet Warna Partikel Lengkap:**
+               - **Emas Mewah (Royal Gold & Amber)**
+               - **Berlian Cyan (Diamond Crystal)**
+               - **Kunang-Kunang (Bioluminescent Lime-Yellow)**
+               - **Pelangi Spektrum (Rainbow Holographic)**
+               - **Kristal Putih (Pure Diamond White)**
+               - **Ruby Merah (Ruby Crimson)**
+               - **Zamrud Hijau (Emerald Glow)**
+               - **Amethyst Ungu (Royal Violet)**
+               - **Multi-Warna Spektakuler**
+
+            7. ✨ **Kilauan Cahaya Sapuan Teks (Metallic Shimmer Sweep):**
+               - Efek sapuan kilau cahaya diagonal (*luminous sheen sweep*) yang melintasi huruf-huruf teks timbul 3D secara berkesinambungan ala intro sinematik bioskop.
+               - Kustomisasi warna kilau (Emas Murni, Perak Berlian, Cyan Neon, Rose Pink) dan kecepatan sapuan kilau.
+
+            8. ⭐ **Kilauan Bintang di Sudut Teks (Star Glint Sparkles):**
+               - Titik-titik bintang kilau 4-sudut tajam berkilip (*star flare glints*) di sudut-sudut huruf judul dengan rotasi dan pulsasi cahaya dinamis.
+
+            9. 👑 **Koleksi Warna Emas Mewah Lengkap untuk Teks:**
+               - Emas Murni 24K (`#FFD700`), Rose Gold Mewah (`#B76E79`), Champagne Gold Sinematik (`#F7E7CE`), Bronze Metalik (`#CD7F32`), dan Emas Kuning Cerah (`#FBBF24`).
 
             1. ⬛ **Knoll Unmult Alpha Keyer:**
                - Mengadopsi teknologi keyer standar industri untuk menghapus latar belakang hitam pekat (atau putih pekat) dari video stok (efek api, ledakan, asap, percikan kembang api, dust particles) dan mengubah luminansinya menjadi kanal transparansi alpha yang bersih secara instan.

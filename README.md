@@ -49,16 +49,21 @@
 - **🎬 Pemutaran Pratinjau Video Bergerak Real-time (Live Video Playback Engine):** Integrasi pemutar hardware-accelerated **TextureView** dan **MediaPlayer** yang memutar video bergerak halus 30-60 fps lengkap dengan audio sinkron saat preview tombol play ditekan. Dilengkapi arsitektur *double-buffering zero-GC frame compositor* untuk merender efek visual After Effects di atas video yang sedang bergerak secara instan.
 - **⚙️ Kustom Durasi Komposisi (Custom Duration):** Pengaturan durasi komposisi bebas: preset cepat (3s, 5s, 10s, 15s, 30s, 60s) atau input manual hingga 300 detik dengan sinkronisasi langsung pada timeline seekbar dan export rendering.
 - **📐 Kustom Resolusi & Rasio Aspek Layar:** Rasio standar industri: **16:9 Landscape (YouTube)**, **9:16 Vertikal (TikTok/Reels/Shorts)**, **1:1 Persegi (Instagram)**, **4:5 Sinematik Portrait**, dan **21:9 Ultrawide Bioskop**, serta opsi resolusi render hingga **4K UHD (3840x2160)**.
-- **🎛️ Parameter Partikel & Kecepatan Efek Global:**
-  - *Kecepatan Efek Global:* Pengatur laju waktu efek 0.25x hingga 3.0x.
-  - *Jumlah Partikel (Density):* 15 hingga 200 partikel (Sparks, Rain, Snow, Bokeh).
-  - *Kecepatan Partikel (Velocity):* 0.2x (Super Slow) hingga 3.0x (Hiper).
-  - *Ukuran Butiran Partikel:* 0.5x hingga 2.0x.
-- **✨ Motion Text Huruf Timbul 3D & Tipografi Lengkap:**
+- **🎛️ Simulasi Partikel Organik Alami & Penuh Kustomisasi (Particle World):**
+  - *Tipe Partikel:* **✨ Bling-Bling & Diamond Sparkles**, **🌟 Kunang-Kunang (Fireflies Bioluminescent Organik)**, **⭐ Bintang & Kosmik (Twinkling Stars & Shooting Star)**, **👑 Debu Emas Mewah (Royal Gold Flakes)**, **🧚‍♀️ Magic Fairy Dust**, **🔥 Sparks & Embers**, **🌧️ Rain & Mist**, **❄️ Snow Drift**, **🔮 Bokeh Orbs**.
+  - *Gerakan Alami & Bebas (Tidak Baris):* Menggunakan simulasi Brown/harmonik acak sehingga partikel melayang bebas alami tanpa pergerakan kaku sejajar.
+  - *5 Pola Gerakan:* **Gerak Acak Alami (Random Wander)**, **Memancar Bebas 360° (Radial Burst)**, **Melayang Naik Organik (Upward Float)**, **Pusaran Kosmik (Vortex Swirl)**, dan **Melayang Turun Lembut (Downward Drift)**.
+  - *Kontrol Turbulensi & Keacakan:* Pengaturan keacakan aliran arah (0.4x s/d 2.8x) dan laju kedipan/pulsasi.
+  - *9 Palet Warna Partikel:* Emas Mewah, Berlian Cyan, Kunang-Kunang, Pelangi, Kristal Putih, Ruby, Zamrud, Amethyst, dan Multi-Warna Spektakuler.
+  - *Bintang 4-Sudut (Glint Flare):* Kilauan tajam cross-flare di pusat partikel.
+- **✨ Motion Text Huruf Timbul 3D, Kilauan Shimmer & Tipografi Lengkap:**
   - *Efek Huruf Timbul 3D (3D Extruded Bevel):* Multi-layer bevel extrusion depth (3px hingga 20px) dengan garis tepi kontur luar dan soft shadow.
+  - *Kilauan Cahaya Sapuan Teks (Metallic Shimmer Sweep):* Efek sapuan kilau cahaya diagonal yang bergerak melintasi huruf teks timbul secara dinamis dengan kecepatan dan warna kustom (Emas Murni, Perak, Cyan, Pink Rose, Amber).
+  - *Bintang Kilau di Sudut Teks (Star Glint Sparkles):* Titik-titik bintang kilau 4-sudut berkilip di sudut-sudut huruf judul.
+  - *Pilihan Warna Huruf:* Koleksi lengkap termasuk **Emas Murni 24K (`#FFD700`)**, **Rose Gold Mewah (`#B76E79`)**, **Champagne Gold Sinematik (`#F7E7CE`)**, **Bronze Metalik (`#CD7F32`)**, Emas Kuning Cerah, Putih, Cyan Neon, Pink Magenta, Hijau Limau, Merah, Ungu, dan Hitam.
   - *Pilihan Font Typography:* Monospace Hacker, Serif Sinematik, Sans-Serif Modern, Casual Script, dan Default Bold.
-  - *Warna Huruf & Ukuran:* Palet warna lengkap (Putih, Emas, Cyan Neon, Magenta, Hijau Limau, Merah Crimson, Hitam) dan ukuran text 24sp hingga 110sp.
-  - *7 Gaya Animasi Motion Text:* Typewriter (mesin tik), Kinetic Zoom Pop, Neon Pulse, Cyber Glitch, 3D Space Flip, Wave Bounce (gelombang pantul), Fade & Slide.
+  - *Ukuran Huruf:* 24sp hingga 110sp.
+  - *7 Gaya Animasi Motion Text:* Typewriter (mesin tik), Kinetic Zoom Pop, Neon Pulse, Cyber Glitch, 3D Space Flip, Wave Bounce, Fade & Slide.
 - **🎉 Stiker & Emoji Animasi Interaktif:**
   - Koleksi stiker emoji dinamis: 🔥, ⚡, ✨, 🎬, 🚀, ❤️, 👑, 💯, 💥, 🌟, 🕶️, 🏆, 💎, 🍿, 🎯, 💣, 💫, 🪐, 🛸, 🎮.
   - 6 Mode Animasi: **Denyut (Pulse)**, **Melompat Pantul (Bounce)**, **Berputar 360° (Spin)**, **Goyang (Wobble)**, **Mengapung Melayang (Float)**, atau Diam (None).

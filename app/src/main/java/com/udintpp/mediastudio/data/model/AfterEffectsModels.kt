@@ -33,6 +33,36 @@ enum class AeEffectType(
         category = "Generate",
         description = "Kilatan lensa sinematik Hollywood dengan garis streak horizontal cyan/emas dan cincin refleksi optik."
     ),
+    PARTICLE_BLING(
+        id = "particle_bling",
+        displayName = "✨ Bling-Bling & Diamond Sparkles",
+        category = "Simulation",
+        description = "Kilau permata tajam dengan bintang 4-sudut berkilau dinamis yang berdenyut dan memancarkan pendaran cahaya."
+    ),
+    PARTICLE_FIREFLIES(
+        id = "particle_fireflies",
+        displayName = "🌟 Kunang-Kunang (Fireflies Bioluminescent)",
+        category = "Simulation",
+        description = "Simulasi kunang-kunang melayang bebas secara organik dengan arah acak dan kedipan cahaya hangat natural."
+    ),
+    PARTICLE_STARS(
+        id = "particle_stars",
+        displayName = "⭐ Bintang & Kosmik (Stars & Comets)",
+        category = "Simulation",
+        description = "Hamparan bintang berkilau kosmik di angkasa dengan variasi kedipan dan lintasan meteor berekor sesekali."
+    ),
+    PARTICLE_GOLD_DUST(
+        id = "particle_gold_dust",
+        displayName = "👑 Debu Emas Mewah (Royal Gold Flakes)",
+        category = "Simulation",
+        description = "Serpihan debu emas 24K berkilauan yang melayang lembut terbawa hembusan angin halus dengan kilau metalik."
+    ),
+    PARTICLE_MAGIC_DUST(
+        id = "particle_magic_dust",
+        displayName = "🧚‍♀️ Magic Fairy Dust (Kilauan Peri Mistik)",
+        category = "Simulation",
+        description = "Pusaran debu sihir bercahaya spektrum pelangi yang menari-nari melayang bebas di udara."
+    ),
     PARTICLE_SPARKS(
         id = "particle_sparks",
         displayName = "✨ Particle World: Sparks & Embers",
@@ -200,7 +230,14 @@ data class AeMotionText(
     var strokeWidth: Float = 2.5f,
     var shadowColor: Int = Color.BLACK,
     var shadowRadius: Float = 10f,
-    var opacity: Float = 1.0f
+    var opacity: Float = 1.0f,
+    // Shimmer / Kilauan Cahaya Sapuan Teks
+    var isShimmerEnabled: Boolean = false,
+    var shimmerColor: Int = Color.parseColor("#FFD700"), // Emas Murni Kilau
+    var shimmerSpeed: Float = 1.0f,
+    // Star Glint Sparkles (Kilau Bintang 4-Sudut di Sudut Huruf)
+    var isStarGlintEnabled: Boolean = false,
+    var starGlintColor: Int = Color.parseColor("#FFD700")
 )
 
 data class AeSticker(
@@ -278,11 +315,16 @@ data class AeConfig(
 
     var lumetriPreset: String = "NONE", // "NONE", "TEAL_ORANGE", "CYBERPUNK", "FILM_NOIR", "MATRIX", "VINTAGE_WARM"
 
-    // Particle Controls
+    // Particle Controls (Custom Lengkap & Natural Organic Motion)
     var activeParticleType: AeEffectType? = null,
-    var particleCount: Int = 50,
+    var particleCount: Int = 60,
     var particleSpeed: Float = 1.0f,
     var particleSize: Float = 1.0f,
+    var particleColorPalette: String = "MULTI", // "GOLD", "DIAMOND", "FIREFLY", "RAINBOW", "RUBY", "EMERALD", "AMETHYST", "CRYSTAL_WHITE", "MULTI"
+    var particleDirectionMode: String = "RANDOM_WANDER", // "RANDOM_WANDER", "RADIAL_BURST", "UPWARD_FLOAT", "DOWNWARD_DRIFT", "VORTEX_SWIRL"
+    var particleTurbulence: Float = 1.0f, // 0.0f - 3.0f (Keacakan arah gerakan)
+    var particleTwinkleRate: Float = 1.0f,
+    var isParticleStarGlintEnabled: Boolean = true,
 
     var isFilmGrainEnabled: Boolean = false,
     var grainAmount: Float = 0.25f,

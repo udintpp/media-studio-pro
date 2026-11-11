@@ -799,19 +799,29 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     private fun showParticleSelectionDialog() {
         val items = arrayOf(
             "Matikan Partikel (None)",
-            "✨ Sparks & Embers (Percikan Api)",
+            "✨ Bling-Bling & Diamond Sparkles (Kilau Permata)",
+            "🌟 Kunang-Kunang (Fireflies Bioluminescent Organik)",
+            "⭐ Bintang & Kosmik (Twinkling Stars & Shooting Star)",
+            "👑 Debu Emas Mewah (Royal Gold Flakes)",
+            "🧚‍♀️ Magic Fairy Dust (Kilauan Mistik)",
+            "🔥 Sparks & Embers (Percikan Api & Bara)",
             "🌧️ Rain & Mist (Hujan Sinematik)",
-            "❄️ Snow Drift (Butiran Salju)",
-            "🔮 Bokeh Orbs (Cahaya Aperture)"
+            "❄️ Snow Drift (Butiran Salju Lembut)",
+            "🔮 Bokeh Orbs (Cahaya Aperture Optik)"
         )
         AlertDialog.Builder(this)
             .setTitle("Pilih Simulasi Partikel (Particle World)")
             .setItems(items) { _, which ->
                 aeConfig.activeParticleType = when (which) {
-                    1 -> AeEffectType.PARTICLE_SPARKS
-                    2 -> AeEffectType.PARTICLE_RAIN
-                    3 -> AeEffectType.PARTICLE_SNOW
-                    4 -> AeEffectType.PARTICLE_BOKEH
+                    1 -> AeEffectType.PARTICLE_BLING
+                    2 -> AeEffectType.PARTICLE_FIREFLIES
+                    3 -> AeEffectType.PARTICLE_STARS
+                    4 -> AeEffectType.PARTICLE_GOLD_DUST
+                    5 -> AeEffectType.PARTICLE_MAGIC_DUST
+                    6 -> AeEffectType.PARTICLE_SPARKS
+                    7 -> AeEffectType.PARTICLE_RAIN
+                    8 -> AeEffectType.PARTICLE_SNOW
+                    9 -> AeEffectType.PARTICLE_BOKEH
                     else -> null
                 }
                 binding.btnVfxParticles.text = if (aeConfig.activeParticleType != null) "✨ Partikel: ON" else "✨ Partikel Sparks/Rain"
@@ -1018,7 +1028,12 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             "⚡ Kecepatan Efek Global (${aeConfig.effectSpeed}x)",
             "✨ Jumlah Partikel / Densitas (${aeConfig.particleCount})",
             "🚀 Kecepatan Gerak Partikel (${aeConfig.particleSpeed}x)",
-            "📏 Ukuran Butiran Partikel (${aeConfig.particleSize}x)"
+            "📏 Ukuran Butiran Partikel (${aeConfig.particleSize}x)",
+            "🎨 Palet Warna Partikel (${aeConfig.particleColorPalette})",
+            "🧭 Arah & Pola Gerakan (${aeConfig.particleDirectionMode})",
+            "💨 Turbulensi & Keacakan Arah (${aeConfig.particleTurbulence}x)",
+            "⭐ Kilau Bintang 4-Sudut (Glint Flare): ${if (aeConfig.isParticleStarGlintEnabled) "ON" else "OFF"}",
+            "💫 Laju Kedipan Partikel (Twinkle Rate: ${aeConfig.particleTwinkleRate}x)"
         )
         AlertDialog.Builder(this)
             .setTitle("🎛️ Parameter Partikel & Kecepatan Efek")
@@ -1037,8 +1052,8 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             .show()
                     }
                     1 -> {
-                        val counts = arrayOf("15 Partikel (Minimalis)", "35 Partikel (Ringan)", "50 Partikel (Normal)", "100 Partikel (Padat)", "150 Partikel (Intensif)", "200 Partikel (Badai)")
-                        val countVals = intArrayOf(15, 35, 50, 100, 150, 200)
+                        val counts = arrayOf("15 Partikel (Minimalis)", "35 Partikel (Ringan)", "60 Partikel (Normal)", "100 Partikel (Padat)", "160 Partikel (Intensif)", "250 Partikel (Badai Mewah)")
+                        val countVals = intArrayOf(15, 35, 60, 100, 160, 250)
                         AlertDialog.Builder(this)
                             .setTitle("Jumlah Partikel (Density Count)")
                             .setItems(counts) { _, cIdx ->
@@ -1061,13 +1076,82 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             .show()
                     }
                     3 -> {
-                        val sizes = arrayOf("0.5x (Kecil Halus)", "1.0x (Normal)", "1.5x (Besar)", "2.0x (Tebal Jelas)")
-                        val sizeVals = floatArrayOf(0.5f, 1.0f, 1.5f, 2.0f)
+                        val sizes = arrayOf("0.5x (Kecil Halus)", "1.0x (Normal)", "1.5x (Besar)", "2.0x (Tebal Jelas)", "2.8x (Maksimal Orbs)")
+                        val sizeVals = floatArrayOf(0.5f, 1.0f, 1.5f, 2.0f, 2.8f)
                         AlertDialog.Builder(this)
                             .setTitle("Ukuran Butiran Partikel")
                             .setItems(sizes) { _, szIdx ->
                                 aeConfig.particleSize = sizeVals[szIdx]
                                 Toast.makeText(this, "Ukuran partikel: ${sizeVals[szIdx]}x", Toast.LENGTH_SHORT).show()
+                                updatePreview()
+                            }
+                            .show()
+                    }
+                    4 -> {
+                        val palettes = arrayOf(
+                            "👑 Emas Mewah (Royal Gold & Amber)",
+                            "💎 Berlian Cyan (Diamond Crystal)",
+                            "🌟 Kunang-Kunang (Bioluminescent Lime-Yellow)",
+                            "🌈 Pelangi Spektrum (Rainbow Holographic)",
+                            "🤍 Kristal Putih (Pure Diamond White)",
+                            "🔴 Ruby Merah (Ruby Crimson)",
+                            "🟢 Zamrud Hijau (Emerald Glow)",
+                            "🟣 Amethyst Ungu (Royal Violet)",
+                            "🎨 Multi-Warna Spektakuler"
+                        )
+                        val paletteCodes = arrayOf("GOLD", "DIAMOND", "FIREFLY", "RAINBOW", "CRYSTAL_WHITE", "RUBY", "EMERALD", "AMETHYST", "MULTI")
+                        AlertDialog.Builder(this)
+                            .setTitle("Pilih Palet Warna Partikel")
+                            .setItems(palettes) { _, pIdx ->
+                                aeConfig.particleColorPalette = paletteCodes[pIdx]
+                                Toast.makeText(this, "Palet warna: ${palettes[pIdx]}", Toast.LENGTH_SHORT).show()
+                                updatePreview()
+                            }
+                            .show()
+                    }
+                    5 -> {
+                        val directions = arrayOf(
+                            "🍃 Gerak Acak Alami (Random Wander / Brownian Motion - Tidak Baris)",
+                            "💥 Memancar Bebas 360° (Radial Burst Outwards)",
+                            "🎈 Melayang Naik Organik (Upward Float with Wind)",
+                            "🌪️ Pusaran Kosmik (Vortex Swirl)",
+                            "🍂 Melayang Turun Lembut (Downward Drift)"
+                        )
+                        val directionCodes = arrayOf("RANDOM_WANDER", "RADIAL_BURST", "UPWARD_FLOAT", "VORTEX_SWIRL", "DOWNWARD_DRIFT")
+                        AlertDialog.Builder(this)
+                            .setTitle("Pilih Arah & Pola Gerak Partikel")
+                            .setItems(directions) { _, dIdx ->
+                                aeConfig.particleDirectionMode = directionCodes[dIdx]
+                                Toast.makeText(this, "Pola gerak: ${directions[dIdx]}", Toast.LENGTH_SHORT).show()
+                                updatePreview()
+                            }
+                            .show()
+                    }
+                    6 -> {
+                        val turbulences = arrayOf("0.4x (Tenang & Lembut)", "1.0x (Alami Seimbang)", "1.8x (Dinamis Berombak)", "2.8x (Sangat Acak & Liar)")
+                        val turbVals = floatArrayOf(0.4f, 1.0f, 1.8f, 2.8f)
+                        AlertDialog.Builder(this)
+                            .setTitle("Tingkat Turbulensi & Keacakan Gerak")
+                            .setItems(turbulences) { _, tIdx ->
+                                aeConfig.particleTurbulence = turbVals[tIdx]
+                                Toast.makeText(this, "Turbulensi: ${turbVals[tIdx]}x", Toast.LENGTH_SHORT).show()
+                                updatePreview()
+                            }
+                            .show()
+                    }
+                    7 -> {
+                        aeConfig.isParticleStarGlintEnabled = !aeConfig.isParticleStarGlintEnabled
+                        Toast.makeText(this, if (aeConfig.isParticleStarGlintEnabled) "Kilau Bintang 4-Sudut: ON" else "Kilau Bintang: OFF", Toast.LENGTH_SHORT).show()
+                        updatePreview()
+                    }
+                    8 -> {
+                        val twinkles = arrayOf("0.5x (Kelip Halus)", "1.0x (Normal)", "2.0x (Kelip Cepat)", "3.0x (Bling Hiper Dinamis)")
+                        val twinkleVals = floatArrayOf(0.5f, 1.0f, 2.0f, 3.0f)
+                        AlertDialog.Builder(this)
+                            .setTitle("Laju Kedipan / Pulsasi Partikel")
+                            .setItems(twinkles) { _, twIdx ->
+                                aeConfig.particleTwinkleRate = twinkleVals[twIdx]
+                                Toast.makeText(this, "Laju kedipan: ${twinkleVals[twIdx]}x", Toast.LENGTH_SHORT).show()
                                 updatePreview()
                             }
                             .show()
@@ -1081,21 +1165,29 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         activeDragTarget = DragTarget.MOTION_TEXT
         val currentText = aeConfig.motionTexts.lastOrNull()
         val embossStatus = if (currentText?.isEmbossEnabled == true) "ON (Aktif)" else "OFF"
+        val shimmerStatus = if (currentText?.isShimmerEnabled == true) "ON (Aktif)" else "OFF"
+        val starGlintStatus = if (currentText?.isStarGlintEnabled == true) "ON (Aktif)" else "OFF"
+
         val options = arrayOf(
             "🧊 Huruf Timbul 3D (Bevel & Extrusion): $embossStatus",
-            "📐 Kedalaman Timbul 3D (${currentText?.embossDepth?.toInt() ?: 6}px)",
+            "📐 Kedalaman Timbul 3D (${currentText?.embossDepth?.toInt() ?: 4}px)",
             "🔤 Pilihan Font Typography (${currentText?.fontFamily ?: "DEFAULT_BOLD"})",
-            "🎨 Pilihan Warna Huruf",
+            "🎨 Pilihan Warna Huruf (Lengkap dengan Emas 24K, Rose Gold, dll)",
+            "✨ Kilauan Cahaya Sapuan Teks (Shimmer Metallic Sweep): $shimmerStatus",
+            "🎨 Warna Kilauan Sapuan Teks (Emas, Perak, Cyan, Pelangi)",
+            "⚡ Kecepatan Sapuan Kilau Teks (${currentText?.shimmerSpeed ?: 1.0f}x)",
+            "⭐ Kilauan Bintang di Sudut Teks (Star Glint Sparkles): $starGlintStatus",
+            "🎨 Warna Bintang Kilau di Teks",
             "📏 Ukuran Font Text (${currentText?.fontSize?.toInt() ?: 44}sp)",
             "📍 Atur Posisi Text Preset",
             "💡 Info: Sentuh & Geser jari di layar preview untuk posisi bebas"
         )
 
         AlertDialog.Builder(this)
-            .setTitle("✨ Kustomisasi Huruf Timbul 3D & Font")
+            .setTitle("✨ Kustomisasi Teks, Huruf Timbul & Kilauan")
             .setItems(options) { _, which ->
                 val target = aeConfig.motionTexts.lastOrNull() ?: run {
-                    val newText = AeMotionText(text = "AFTER EFFECTS PRO", color = Color.WHITE)
+                    val newText = AeMotionText(text = "AFTER EFFECTS PRO", color = Color.parseColor("#FFD700"))
                     aeConfig.motionTexts.add(newText)
                     newText
                 }
@@ -1132,10 +1224,27 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             .show()
                     }
                     3 -> {
-                        val colorNames = arrayOf("Putih Murni", "Emas Kemilau", "Cyan Neon", "Pink Magenta", "Hijau Limau Neon", "Merah Crimson", "Ungu Neon", "Hitam Gelap")
+                        val colorNames = arrayOf(
+                            "👑 Emas Murni 24K (Pure Gold #FFD700)",
+                            "🌹 Rose Gold Mewah (#B76E79)",
+                            "🥂 Champagne Gold Sinematik (#F7E7CE)",
+                            "🥉 Bronze Metalik (#CD7F32)",
+                            "✨ Emas Kuning Cerah (#FBBF24)",
+                            "🤍 Putih Murni (#FFFFFF)",
+                            "💎 Cyan Berlian Neon (#06B6D4)",
+                            "💖 Pink Magenta Glamor (#EC4899)",
+                            "💚 Hijau Limau Neon (#84CC16)",
+                            "🔴 Merah Crimson (#EF4444)",
+                            "💜 Ungu Amethyst (#A855F7)",
+                            "🖤 Hitam Onyx (#0F172A)"
+                        )
                         val colorVals = intArrayOf(
-                            Color.WHITE,
+                            Color.parseColor("#FFD700"),
+                            Color.parseColor("#B76E79"),
+                            Color.parseColor("#F7E7CE"),
+                            Color.parseColor("#CD7F32"),
                             Color.parseColor("#FBBF24"),
+                            Color.WHITE,
                             Color.parseColor("#06B6D4"),
                             Color.parseColor("#EC4899"),
                             Color.parseColor("#84CC16"),
@@ -1153,6 +1262,56 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             .show()
                     }
                     4 -> {
+                        target.isShimmerEnabled = !target.isShimmerEnabled
+                        Toast.makeText(this, if (target.isShimmerEnabled) "Kilauan Sapuan Teks: ON" else "Kilauan Sapuan: OFF", Toast.LENGTH_SHORT).show()
+                        updatePreview()
+                    }
+                    5 -> {
+                        val shimmerNames = arrayOf("Emas Murni (#FFD700)", "Perak Berlian (#E2E8F0)", "Cyan Neon (#06B6D4)", "Pink Rose (#EC4899)", "Amber Warm (#F59E0B)")
+                        val shimmerColors = intArrayOf(
+                            Color.parseColor("#FFD700"), Color.parseColor("#E2E8F0"), Color.parseColor("#06B6D4"),
+                            Color.parseColor("#EC4899"), Color.parseColor("#F59E0B")
+                        )
+                        AlertDialog.Builder(this)
+                            .setTitle("Pilih Warna Kilauan Sapuan Teks")
+                            .setItems(shimmerNames) { _, scIdx ->
+                                target.shimmerColor = shimmerColors[scIdx]
+                                target.isShimmerEnabled = true
+                                Toast.makeText(this, "Warna kilauan: ${shimmerNames[scIdx]}", Toast.LENGTH_SHORT).show()
+                                updatePreview()
+                            }
+                            .show()
+                    }
+                    6 -> {
+                        val speeds = arrayOf("0.5x (Lambat Berwibawa)", "1.0x (Normal Sinematik)", "1.8x (Cepat Berkilau)", "2.5x (Kilat Mewah)")
+                        val speedVals = floatArrayOf(0.5f, 1.0f, 1.8f, 2.5f)
+                        AlertDialog.Builder(this)
+                            .setTitle("Kecepatan Sapuan Kilau Teks")
+                            .setItems(speeds) { _, spIdx ->
+                                target.shimmerSpeed = speedVals[spIdx]
+                                target.isShimmerEnabled = true
+                                updatePreview()
+                            }
+                            .show()
+                    }
+                    7 -> {
+                        target.isStarGlintEnabled = !target.isStarGlintEnabled
+                        Toast.makeText(this, if (target.isStarGlintEnabled) "Kilau Bintang Teks: ON" else "Kilau Bintang Teks: OFF", Toast.LENGTH_SHORT).show()
+                        updatePreview()
+                    }
+                    8 -> {
+                        val starColors = arrayOf("Emas Murni (#FFD700)", "Putih Berlian (#FFFFFF)", "Cyan Elektrik (#06B6D4)", "Rose Pink (#F43F5E)")
+                        val starVals = intArrayOf(Color.parseColor("#FFD700"), Color.WHITE, Color.parseColor("#06B6D4"), Color.parseColor("#F43F5E"))
+                        AlertDialog.Builder(this)
+                            .setTitle("Pilih Warna Bintang Kilau")
+                            .setItems(starColors) { _, stIdx ->
+                                target.starGlintColor = starVals[stIdx]
+                                target.isStarGlintEnabled = true
+                                updatePreview()
+                            }
+                            .show()
+                    }
+                    9 -> {
                         val sizes = arrayOf("24sp (Kecil)", "36sp (Sedang)", "48sp (Standar Judul)", "64sp (Besar)", "80sp (Ekstra Besar)", "110sp (Maksimal Header)")
                         val sizeVals = floatArrayOf(24f, 36f, 48f, 64f, 80f, 110f)
                         AlertDialog.Builder(this)
@@ -1163,7 +1322,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             }
                             .show()
                     }
-                    5 -> {
+                    10 -> {
                         val positions = arrayOf("Atas Layar", "Tengah Layar", "Bawah Layar", "Kiri Tengah", "Kanan Tengah")
                         AlertDialog.Builder(this)
                             .setTitle("Atur Posisi Preset Text")
@@ -1180,7 +1339,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             }
                             .show()
                     }
-                    6 -> {
+                    11 -> {
                         Toast.makeText(this, "Sentuh dan geser jari Anda pada layar preview di atas untuk memindahkan teks secara bebas!", Toast.LENGTH_LONG).show()
                     }
                 }
@@ -1632,11 +1791,11 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             "⚡ Saber Neon Edge Effect",
             "☀️ Anamorphic Lens Flare",
             "🎨 Lumetri Color Grading",
-            "✨ Partikel Sparks & Atmospheric Emitters",
-            "🎛️ Parameter Partikel Kustom",
+            "✨ Partikel Bling, Kunang-Kunang, Bintang, Emas & Sparks",
+            "🎛️ Parameter Partikel (Warna, Arah Acak & Turbulensi)",
             "🎞️ Film Grain 35mm Real Stock",
             "🔤 Motion Text Animasi",
-            "✨ Timbul, 3D & Tipografi Huruf",
+            "✨ Huruf Timbul 3D, Kilauan Shimmer & Bintang Teks",
             "🎉 Stiker Animasi Giphy/PNG",
             "🎵 Audio Waveform / Spectrum React",
             "🎭 Blending Modes (Add, Screen, dll)",

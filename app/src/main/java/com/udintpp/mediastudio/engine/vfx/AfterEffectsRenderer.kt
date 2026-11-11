@@ -138,7 +138,7 @@ object AfterEffectsRenderer {
 
         // 9. Particle World Simulation
         if (config.activeParticleType != null) {
-            renderParticleWorld(canvas, w, h, timeMs, config.activeParticleType!!, config.particleCount, config.particleSpeed * config.effectSpeed)
+            renderParticleWorld(canvas, w, h, timeMs, config)
         }
 
         // 10. 35mm Celluloid Film Grain
@@ -593,78 +593,351 @@ object AfterEffectsRenderer {
         canvas.drawCircle(oppositeX * 0.4f + cx * 0.6f, oppositeY * 0.4f + cy * 0.6f, 25f, ringPaint)
     }
 
-    // --- 6. Particle World Simulation ---
+    // --- 6. Particle World Simulation (Natural Organic Multi-Directional Engine) ---
     private fun renderParticleWorld(
         canvas: Canvas,
         w: Int,
         h: Int,
         timeMs: Long,
-        type: AeEffectType,
-        count: Int,
-        speed: Float
+        config: AeConfig
     ) {
+        val type = config.activeParticleType ?: return
+        val count = config.particleCount.coerceIn(10, 300)
+        val globalSpeed = config.particleSpeed * config.effectSpeed
+        val baseSize = config.particleSize
+        val turbulence = config.particleTurbulence.coerceIn(0f, 3.5f)
         val pPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
-        when (type) {
-            AeEffectType.PARTICLE_SPARKS -> {
-                pPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
-                for (i in 0 until count) {
-                    val seed = i * 1337L
-                    val life = ((timeMs * speed + seed) % 2000L) / 2000f
-                    val x = ((seed * 17) % w) + sin((life * 6f).toDouble()).toFloat() * 40f
-                    val y = h - (life * h * 1.1f)
-                    val size = (1f - life) * 8f
-                    val alpha = ((1f - life) * 255).toInt().coerceIn(0, 255)
+        for (i in 0 until count) {
+            val seed = (i * 2654435761L) xor 0x5DEECE66DL
+            val hash0 = ((seed ushr 16 and 0xFFFF) % 10000) / 10000f
+            val hash1 = ((seed ushr 8 and 0xFFFF) % 10000) / 10000f
+            val hash2 = ((seed ushr 4 and 0xFFFF) % 10000) / 10000f
+            val hash3 = (abs(seed % 10000)) / 10000f
 
-                    pPaint.color = if (i % 2 == 0) Color.parseColor("#F59E0B") else Color.parseColor("#EF4444")
-                    pPaint.alpha = alpha
-                    canvas.drawCircle(x, y, size, pPaint)
-                }
-            }
-            AeEffectType.PARTICLE_RAIN -> {
-                pPaint.color = Color.parseColor("#70E2E8F0")
-                pPaint.strokeWidth = 2.5f
-                for (i in 0 until count * 2) {
-                    val seed = i * 997L
-                    val fallY = ((timeMs * speed * 2f + seed) % h)
-                    val x = (seed * 31) % w
-                    canvas.drawLine(x.toFloat(), fallY, x - 10f, fallY + 30f, pPaint)
-                }
-            }
-            AeEffectType.PARTICLE_SNOW -> {
-                pPaint.color = Color.WHITE
-                for (i in 0 until count) {
-                    val seed = i * 613L
-                    val driftY = ((timeMs * speed * 0.3f + seed) % h)
-                    val driftX = ((seed * 43) % w) + sin((driftY / 40f).toDouble()).toFloat() * 20f
-                    val radius = 3f + (seed % 4)
-                    val alpha = 120 + (seed % 120).toInt()
-                    pPaint.alpha = alpha
-                    canvas.drawCircle(driftX, driftY, radius, pPaint)
-                }
-            }
-            AeEffectType.PARTICLE_BOKEH -> {
-                pPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
-                for (i in 0 until (count / 2).coerceAtLeast(8)) {
-                    val seed = i * 2039L
-                    val floatY = ((timeMs * speed * 0.15f + seed) % h)
-                    val floatX = ((seed * 57) % w)
-                    val radius = 25f + (seed % 45)
-                    val alpha = 35 + (seed % 40).toInt()
+            val indivSpeed = (0.55f + hash0 * 0.9f) * globalSpeed
+            val indivSize = (0.6f + hash1 * 0.8f) * baseSize
+            val t = (timeMs / 1000f) * indivSpeed
 
-                    val bokehColors = intArrayOf(
-                        Color.parseColor("#8B5CF6"),
-                        Color.parseColor("#06B6D4"),
-                        Color.parseColor("#EC4899"),
-                        Color.parseColor("#F59E0B")
-                    )
-                    pPaint.color = bokehColors[i % bokehColors.size]
-                    pPaint.alpha = alpha
-                    canvas.drawCircle(floatX.toFloat(), floatY, radius, pPaint)
+            // Natural individual lifecycle & fading (smooth sinusoidal breath)
+            val cycleSec = 3.2f / indivSpeed.coerceAtLeast(0.2f)
+            val phase = ((t + hash1 * cycleSec) % cycleSec) / cycleSec
+            val fadeInOut = sin(phase * Math.PI).toFloat().coerceIn(0f, 1f)
+
+            // Twinkle pulsation
+            val twinkleFreq = config.particleTwinkleRate * (2.0f + hash0 * 3.5f)
+            val twinkle = (sin(t * twinkleFreq + hash2 * 6.28f) * 0.35f + 0.65f).toFloat().coerceIn(0.1f, 1f)
+            val curAlpha = (fadeInOut * twinkle * 255).toInt().coerceIn(0, 255)
+
+            // Base spawn coordinate
+            val origX = hash2 * w
+            val origY = hash3 * h
+
+            // Physics-based Organic Trajectory Calculation
+            val posX: Float
+            val posY: Float
+            when (config.particleDirectionMode) {
+                "RADIAL_BURST" -> {
+                    val burstAngle = (hash0 * 2f * Math.PI.toFloat()) + (sin(t * 0.5f + hash1) * 0.4f * turbulence)
+                    val dist = phase * max(w, h) * 0.65f
+                    val rx = ((w * 0.5f) + cos(burstAngle) * dist)
+                    val ry = ((h * 0.5f) + sin(burstAngle) * dist)
+                    posX = (rx % w + w) % w
+                    posY = (ry % h + h) % h
+                }
+                "UPWARD_FLOAT" -> {
+                    val sway = sin(t * 1.6f * turbulence + hash0 * 6.28f) * 50f + cos(t * 0.8f) * 20f
+                    val rx = origX + sway
+                    val ry = h - (phase * (h + 100f))
+                    posX = (rx % w + w) % w
+                    posY = (ry % h + h) % h
+                }
+                "DOWNWARD_DRIFT" -> {
+                    val sway = sin(t * 1.4f * turbulence + hash1 * 6.28f) * 40f
+                    val rx = origX + sway + t * 25f
+                    val ry = phase * (h + 100f)
+                    posX = (rx % w + w) % w
+                    posY = (ry % h + h) % h
+                }
+                "VORTEX_SWIRL" -> {
+                    val vortexRadius = 30f + phase * max(w, h) * 0.45f
+                    val vortexAngle = t * 2.2f + hash0 * 6.28f
+                    val rx = ((w * 0.5f) + cos(vortexAngle) * vortexRadius)
+                    val ry = ((h * 0.5f) + sin(vortexAngle) * vortexRadius)
+                    posX = (rx % w + w) % w
+                    posY = (ry % h + h) % h
+                }
+                else -> {
+                    // RANDOM_WANDER: Brownian chaotic drifting with dual harmonic frequencies
+                    val wanderX = sin(t * 0.75f + hash0 * 6.28f) * 65f * turbulence +
+                                  cos(t * 1.4f + hash1 * 3.14f) * 35f * turbulence
+                    val wanderY = cos(t * 0.65f + hash2 * 6.28f) * 55f * turbulence +
+                                  sin(t * 1.25f + hash3 * 3.14f) * 25f * turbulence
+                    val driftX = (hash0 - 0.5f) * 45f * t
+                    val driftY = -t * 22f
+                    val rx = origX + wanderX + driftX
+                    val ry = origY + wanderY + driftY
+                    posX = (rx % w + w) % w
+                    posY = (ry % h + h) % h
                 }
             }
-            else -> {}
+
+            // Visual Styling per Particle Type
+            when (type) {
+                AeEffectType.PARTICLE_BLING -> {
+                    val pColor = getParticlePaletteColor(config.particleColorPalette, seed, timeMs)
+                    val baseR = (5f + hash2 * 7.5f) * indivSize
+                    pPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+                    pPaint.color = pColor
+                    pPaint.alpha = (curAlpha * 0.85f).toInt()
+                    canvas.drawCircle(posX, posY, baseR * 0.85f, pPaint)
+                    if (config.isParticleStarGlintEnabled) {
+                        val rot = (timeMs * 0.08f * indivSpeed + hash0 * 360f) % 360f
+                        drawStarGlint(canvas, posX, posY, baseR * 1.4f, pColor, curAlpha, rot)
+                    }
+                }
+                AeEffectType.PARTICLE_FIREFLIES -> {
+                    val pColor = if (config.particleColorPalette == "MULTI") {
+                        getParticlePaletteColor("FIREFLY", seed, timeMs)
+                    } else {
+                        getParticlePaletteColor(config.particleColorPalette, seed, timeMs)
+                    }
+                    val haloR = (18f + hash2 * 14f) * indivSize
+                    val glowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+                        shader = RadialGradient(
+                            posX, posY, haloR,
+                            intArrayOf(
+                                pColor,
+                                Color.argb((curAlpha * 0.4f).toInt(), Color.red(pColor), Color.green(pColor), Color.blue(pColor)),
+                                Color.TRANSPARENT
+                            ),
+                            floatArrayOf(0f, 0.45f, 1f),
+                            Shader.TileMode.CLAMP
+                        )
+                    }
+                    canvas.drawCircle(posX, posY, haloR, glowPaint)
+                    val corePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+                        color = Color.WHITE
+                        alpha = curAlpha
+                    }
+                    canvas.drawCircle(posX, posY, (2.6f + hash1 * 2f) * indivSize, corePaint)
+                }
+                AeEffectType.PARTICLE_STARS -> {
+                    val pColor = getParticlePaletteColor(config.particleColorPalette, seed, timeMs)
+                    val starR = (3.5f + hash0 * 4.5f) * indivSize
+                    drawStarGlint(canvas, posX, posY, starR, pColor, curAlpha, hash1 * 90f)
+
+                    // Shooting star meteor streak
+                    if (i == 0) {
+                        val cometPeriod = 4200L
+                        val cometTime = (timeMs % cometPeriod).toFloat() / cometPeriod
+                        if (cometTime < 0.28f) {
+                            val cPhase = cometTime / 0.28f
+                            val startCX = w * 0.88f - cPhase * (w * 0.75f)
+                            val startCY = h * 0.08f + cPhase * (h * 0.38f)
+                            val cometPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                                strokeWidth = 3.5f * indivSize
+                                strokeCap = Paint.Cap.ROUND
+                                shader = LinearGradient(
+                                    startCX, startCY, startCX + 100f, startCY - 50f,
+                                    Color.WHITE, Color.TRANSPARENT, Shader.TileMode.CLAMP
+                                )
+                            }
+                            canvas.drawLine(startCX, startCY, startCX + 100f, startCY - 50f, cometPaint)
+                            drawStarGlint(canvas, startCX, startCY, 7.5f * indivSize, Color.WHITE, 255)
+                        }
+                    }
+                }
+                AeEffectType.PARTICLE_GOLD_DUST -> {
+                    val goldColor = getParticlePaletteColor("GOLD", seed, timeMs)
+                    val flakeR = (4.5f + hash3 * 6.5f) * indivSize
+                    val rot = (timeMs * 0.06f + hash2 * 180f)
+                    drawStarGlint(canvas, posX, posY, flakeR * 1.15f, goldColor, curAlpha, rot)
+                }
+                AeEffectType.PARTICLE_MAGIC_DUST -> {
+                    val magicColor = getParticlePaletteColor(config.particleColorPalette, seed, timeMs)
+                    val magicR = (4f + hash1 * 5.5f) * indivSize
+                    drawStarGlint(canvas, posX, posY, magicR, magicColor, curAlpha, (t * 60f + hash0 * 360f))
+                }
+                AeEffectType.PARTICLE_SPARKS -> {
+                    val sparkLife = phase
+                    val sparkY = (h - (sparkLife * h * 1.15f)).let { (it % h + h) % h }
+                    val sparkSize = (1f - sparkLife) * 7.5f * indivSize
+                    val sparkColor = if (sparkLife < 0.35f) Color.parseColor("#FEF08A")
+                                     else if (sparkLife < 0.7f) Color.parseColor("#F59E0B")
+                                     else Color.parseColor("#EF4444")
+                    pPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+                    pPaint.color = sparkColor
+                    pPaint.alpha = curAlpha
+                    canvas.drawCircle(posX, sparkY, sparkSize, pPaint)
+                }
+                AeEffectType.PARTICLE_RAIN -> {
+                    val rainY = (origY + t * 480f).let { (it % h + h) % h }
+                    val rainX = (origX - (rainY * 0.22f)).let { (it % w + w) % w }
+                    val dropLen = (22f + hash0 * 25f) * indivSize
+                    val rainPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        color = Color.parseColor("#80E2E8F0")
+                        strokeWidth = (1.5f + hash1 * 1.5f) * indivSize
+                        strokeCap = Paint.Cap.ROUND
+                    }
+                    canvas.drawLine(rainX, rainY, rainX - (dropLen * 0.22f), rainY + dropLen, rainPaint)
+                }
+                AeEffectType.PARTICLE_SNOW -> {
+                    val snowR = (2.5f + hash2 * 4f) * indivSize
+                    pPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OVER)
+                    pPaint.color = Color.WHITE
+                    pPaint.alpha = (90 + hash0 * 150).toInt()
+                    canvas.drawCircle(posX, posY, snowR, pPaint)
+                }
+                AeEffectType.PARTICLE_BOKEH -> {
+                    val bokehColor = getParticlePaletteColor(config.particleColorPalette, seed, timeMs)
+                    val bokehR = (22f + hash3 * 38f) * indivSize
+                    pPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+                    pPaint.color = bokehColor
+                    pPaint.alpha = (25 + hash1 * 40).toInt()
+                    canvas.drawCircle(posX, posY, bokehR, pPaint)
+                    pPaint.style = Paint.Style.STROKE
+                    pPaint.strokeWidth = 2f
+                    pPaint.alpha = (40 + hash1 * 50).toInt()
+                    canvas.drawCircle(posX, posY, bokehR, pPaint)
+                    pPaint.style = Paint.Style.FILL
+                }
+                else -> {}
+            }
         }
+    }
+
+    // --- Star Glint 4-Point Diamond Flare Helper ---
+    private fun drawStarGlint(
+        canvas: Canvas,
+        cx: Float,
+        cy: Float,
+        radius: Float,
+        color: Int,
+        alpha: Int,
+        rotationAngle: Float = 0f
+    ) {
+        if (alpha <= 0 || radius <= 0.5f) return
+        val glintPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            this.color = color
+            this.alpha = alpha.coerceIn(0, 255)
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+            style = Paint.Style.FILL
+        }
+
+        canvas.save()
+        canvas.translate(cx, cy)
+        if (rotationAngle != 0f) {
+            canvas.rotate(rotationAngle)
+        }
+
+        // Soft radial center orb
+        val glowPaint = Paint(glintPaint).apply {
+            shader = RadialGradient(
+                0f, 0f, radius * 1.6f,
+                intArrayOf(Color.WHITE, color, Color.TRANSPARENT),
+                floatArrayOf(0f, 0.4f, 1f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawCircle(0f, 0f, radius * 1.6f, glowPaint)
+
+        // Horizontal & Vertical Needle Rays
+        val path = Path()
+        val rX = radius * 3.0f
+        val rY = radius * 0.28f
+        path.moveTo(0f, -rY)
+        path.lineTo(rX, 0f)
+        path.lineTo(0f, rY)
+        path.lineTo(-rX, 0f)
+        path.close()
+
+        path.moveTo(-rY, 0f)
+        path.lineTo(0f, -rX)
+        path.lineTo(rY, 0f)
+        path.lineTo(0f, rX)
+        path.close()
+        canvas.drawPath(path, glintPaint)
+
+        // Diagonal secondary rays (45 deg)
+        val diagR = radius * 1.35f
+        val diagThick = radius * 0.18f
+        val diagPath = Path()
+        diagPath.moveTo(-diagThick, -diagThick)
+        diagPath.lineTo(diagR, -diagR)
+        diagPath.lineTo(diagThick, diagThick)
+        diagPath.lineTo(-diagR, diagR)
+        diagPath.close()
+
+        diagPath.moveTo(diagThick, -diagThick)
+        diagPath.lineTo(-diagR, -diagR)
+        diagPath.lineTo(-diagThick, diagThick)
+        diagPath.lineTo(diagR, diagR)
+        diagPath.close()
+
+        glintPaint.alpha = (alpha * 0.65f).toInt().coerceIn(0, 255)
+        canvas.drawPath(diagPath, glintPaint)
+
+        // White hot center core
+        glintPaint.color = Color.WHITE
+        glintPaint.alpha = alpha
+        canvas.drawCircle(0f, 0f, radius * 0.4f, glintPaint)
+
+        canvas.restore()
+    }
+
+    // --- Particle Color Palette Resolver ---
+    private fun getParticlePaletteColor(palette: String, seed: Long, timeMs: Long): Int {
+        val goldPalette = intArrayOf(
+            Color.parseColor("#FFD700"), Color.parseColor("#F59E0B"), Color.parseColor("#FBBF24"),
+            Color.parseColor("#FEF08A"), Color.parseColor("#EAB308")
+        )
+        val diamondPalette = intArrayOf(
+            Color.parseColor("#06B6D4"), Color.parseColor("#38BDF8"), Color.parseColor("#E0F2FE"),
+            Color.parseColor("#818CF8"), Color.parseColor("#67E8F9")
+        )
+        val fireflyPalette = intArrayOf(
+            Color.parseColor("#A3E635"), Color.parseColor("#FACC15"), Color.parseColor("#4ADE80"),
+            Color.parseColor("#84CC16"), Color.parseColor("#FEF08A")
+        )
+        val rainbowPalette = intArrayOf(
+            Color.parseColor("#EF4444"), Color.parseColor("#F59E0B"), Color.parseColor("#10B981"),
+            Color.parseColor("#06B6D4"), Color.parseColor("#8B5CF6"), Color.parseColor("#EC4899")
+        )
+        val rubyPalette = intArrayOf(
+            Color.parseColor("#EF4444"), Color.parseColor("#DC2626"), Color.parseColor("#F43F5E"), Color.parseColor("#FDA4AF")
+        )
+        val emeraldPalette = intArrayOf(
+            Color.parseColor("#10B981"), Color.parseColor("#059669"), Color.parseColor("#34D399"), Color.parseColor("#6EE7B7")
+        )
+        val amethystPalette = intArrayOf(
+            Color.parseColor("#9333EA"), Color.parseColor("#A855F7"), Color.parseColor("#C084FC"), Color.parseColor("#7E22CE")
+        )
+        val whitePalette = intArrayOf(
+            Color.WHITE, Color.parseColor("#F8FAFC"), Color.parseColor("#E2E8F0"), Color.parseColor("#CBD5E1")
+        )
+
+        val arr = when (palette) {
+            "GOLD" -> goldPalette
+            "DIAMOND" -> diamondPalette
+            "FIREFLY" -> fireflyPalette
+            "RAINBOW" -> rainbowPalette
+            "RUBY" -> rubyPalette
+            "EMERALD" -> emeraldPalette
+            "AMETHYST" -> amethystPalette
+            "CRYSTAL_WHITE" -> whitePalette
+            else -> {
+                intArrayOf(
+                    Color.parseColor("#FFD700"), Color.parseColor("#06B6D4"), Color.parseColor("#A3E635"),
+                    Color.parseColor("#EC4899"), Color.parseColor("#8B5CF6"), Color.parseColor("#F59E0B"),
+                    Color.parseColor("#38BDF8"), Color.WHITE
+                )
+            }
+        }
+        val idx = (abs(seed) % arr.size).toInt()
+        return arr[idx]
     }
 
     // --- 7. 35mm Celluloid Film Grain ---
@@ -750,7 +1023,7 @@ object AfterEffectsRenderer {
                 val t = (speedMs % cycleMs).toFloat() / cycleMs
                 val charsToShow = (t * item.text.length * 1.3f).toInt().coerceIn(0, item.text.length)
                 val substring = item.text.substring(0, charsToShow)
-                drawEmbossedText(canvas, px, py, substring, textPaint, item)
+                drawEmbossedText(canvas, px, py, substring, textPaint, item, timeMs)
             }
             "KINETIC_ZOOM" -> {
                 val cycleMs = 1500L
@@ -765,13 +1038,13 @@ object AfterEffectsRenderer {
                 canvas.save()
                 canvas.translate(px, py)
                 canvas.scale(scale, scale)
-                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item)
+                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item, timeMs)
                 canvas.restore()
             }
             "NEON_PULSE" -> {
                 val pulse = 0.7f + 0.3f * sin((speedMs / 180f).toDouble()).toFloat()
                 textPaint.alpha = (pulse * 255).toInt().coerceIn(80, 255)
-                drawEmbossedText(canvas, px, py, item.text, textPaint, item)
+                drawEmbossedText(canvas, px, py, item.text, textPaint, item, timeMs)
             }
             "GLITCH" -> {
                 val glitchOffset = if (random.nextInt(10) > 7) (random.nextFloat() - 0.5f) * 16f else 0f
@@ -782,7 +1055,7 @@ object AfterEffectsRenderer {
                 textPaint.color = Color.parseColor("#06B6D4")
                 canvas.drawText(item.text, 4f, 0f, textPaint)
                 textPaint.color = item.color
-                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item)
+                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item, timeMs)
                 canvas.restore()
             }
             "3D_FLIP" -> {
@@ -798,14 +1071,14 @@ object AfterEffectsRenderer {
                 canvas.save()
                 canvas.translate(px, py)
                 canvas.concat(mtx)
-                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item)
+                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item, timeMs)
                 canvas.restore()
             }
             "WAVE_BOUNCE" -> {
                 val bounce = sin((speedMs / 130f).toDouble()).toFloat() * 16f
                 canvas.save()
                 canvas.translate(px, py + bounce)
-                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item)
+                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item, timeMs)
                 canvas.restore()
             }
             "FADE_SLIDE" -> {
@@ -815,11 +1088,11 @@ object AfterEffectsRenderer {
                 textPaint.alpha = ((t.coerceIn(0f, 0.25f) / 0.25f) * 255).toInt()
                 canvas.save()
                 canvas.translate(px, py + slideY)
-                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item)
+                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item, timeMs)
                 canvas.restore()
             }
             else -> {
-                drawEmbossedText(canvas, px, py, item.text, textPaint, item)
+                drawEmbossedText(canvas, px, py, item.text, textPaint, item, timeMs)
             }
         }
     }
@@ -830,11 +1103,14 @@ object AfterEffectsRenderer {
         y: Float,
         text: String,
         textPaint: Paint,
-        item: AeMotionText
+        item: AeMotionText,
+        timeMs: Long
     ) {
+        if (text.isEmpty()) return
+
         // 1. Efek Huruf Timbul 3D (3D Extrusion Depth / Bevel)
         if (item.isEmbossEnabled) {
-            val depth = item.embossDepth.coerceIn(1f, 15f)
+            val depth = item.embossDepth.coerceIn(1f, 20f)
             val shadowPaint = Paint(textPaint).apply {
                 color = item.shadowColor
                 style = Paint.Style.FILL
@@ -859,6 +1135,67 @@ object AfterEffectsRenderer {
         // 3. Main face text dengan outer neon glow
         textPaint.setShadowLayer(item.shadowRadius, 0f, 0f, item.glowColor)
         canvas.drawText(text, x, y, textPaint)
+
+        // 4. Shimmer / Metallic Sheen sweep melintasi teks
+        if (item.isShimmerEnabled) {
+            val textWidth = textPaint.measureText(text)
+            val cycle = 1800L
+            val speed = item.shimmerSpeed.coerceAtLeast(0.1f)
+            val t = ((timeMs * speed) % cycle).toFloat() / cycle
+            val startSweepX = x - (textWidth * 0.5f) - 100f
+            val endSweepX = x + (textWidth * 0.5f) + 100f
+            val currentBeamX = startSweepX + t * (endSweepX - startSweepX)
+
+            val shimmerPaint = Paint(textPaint).apply {
+                xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_ATOP)
+                clearShadowLayer()
+                shader = LinearGradient(
+                    currentBeamX - 60f, y - item.fontSize,
+                    currentBeamX + 60f, y + 10f,
+                    intArrayOf(
+                        Color.TRANSPARENT,
+                        item.shimmerColor,
+                        Color.WHITE,
+                        item.shimmerColor,
+                        Color.TRANSPARENT
+                    ),
+                    floatArrayOf(0f, 0.35f, 0.5f, 0.65f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+            }
+            val textBounds = RectF(
+                x - textWidth * 0.6f,
+                y - item.fontSize * 1.5f,
+                x + textWidth * 0.6f,
+                y + item.fontSize * 0.8f
+            )
+            canvas.saveLayer(textBounds, null)
+            canvas.drawText(text, x, y, textPaint)
+            canvas.drawText(text, x, y, shimmerPaint)
+            canvas.restore()
+        }
+
+        // 5. Star Glint Sparkles (Kilau Bintang 4-Sudut di Sudut Huruf)
+        if (item.isStarGlintEnabled) {
+            val textWidth = textPaint.measureText(text)
+            val leftX = x - (textWidth * 0.48f)
+            val topY = y - (item.fontSize * 0.75f)
+
+            // Corner 1: Awal kata
+            val phase1 = (sin((timeMs * 0.006f) + 0f) * 0.5f + 0.5f)
+            val rot1 = (timeMs * 0.08f) % 360f
+            drawStarGlint(canvas, leftX + 8f, topY + 4f, 8f * phase1, item.starGlintColor, (phase1 * 255).toInt(), rot1)
+
+            // Corner 2: Akhir kata
+            val phase2 = (sin((timeMs * 0.006f) + 2.2f) * 0.5f + 0.5f)
+            val rot2 = (timeMs * -0.06f + 45f) % 360f
+            drawStarGlint(canvas, leftX + textWidth - 8f, topY + 2f, 7.5f * phase2, item.starGlintColor, (phase2 * 255).toInt(), rot2)
+
+            // Corner 3: Tengah atas
+            val phase3 = (sin((timeMs * 0.007f) + 4.4f) * 0.5f + 0.5f)
+            val rot3 = (timeMs * 0.1f + 90f) % 360f
+            drawStarGlint(canvas, x, topY - 3f, 6.5f * phase3, item.starGlintColor, (phase3 * 255).toInt(), rot3)
+        }
     }
 
     // --- 10. Animated Sticker & Emoji Engine ---
