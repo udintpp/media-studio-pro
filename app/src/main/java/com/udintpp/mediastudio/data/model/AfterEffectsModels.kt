@@ -87,6 +87,18 @@ enum class AeEffectType(
         category = "Simulation",
         description = "Lingkaran bias cahaya bokeh fotografi aperture lebar dengan kedalaman ruang optik."
     ),
+    PARTICLE_FIREWORKS(
+        id = "particle_fireworks",
+        displayName = "🎆 Kembang Api Tahun Baru (New Year Fireworks)",
+        category = "Simulation",
+        description = "Simulasi ledakan kembang api spektakuler perayaan tahun baru dengan roket meluncur, ledakan mekar radial, dan percikan kilau."
+    ),
+    PARTICLE_KETUPAT(
+        id = "particle_ketupat",
+        displayName = "🕌 Ketupat Lebaran (Eid Mubarak Festive)",
+        category = "Simulation",
+        description = "Dekorasi anyaman ketupat hijau-emas melayang anggun dengan pita janur berkibar dan kilauan berkah Idul Fitri."
+    ),
     FILM_GRAIN(
         id = "film_grain",
         displayName = "🎞️ 35mm Celluloid Film Grain",

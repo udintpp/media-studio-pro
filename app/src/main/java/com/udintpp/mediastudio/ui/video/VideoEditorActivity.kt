@@ -19,6 +19,7 @@ import com.udintpp.mediastudio.data.model.ImageAdjustments
 import com.udintpp.mediastudio.databinding.ActivityVideoEditorBinding
 import com.udintpp.mediastudio.engine.video.VideoEffectTransformer
 import com.udintpp.mediastudio.ui.dialog.Export4KDialog
+import com.udintpp.mediastudio.util.StorageExportHelper
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -339,10 +340,11 @@ class VideoEditorActivity : AppCompatActivity() {
         val uri = videoUri ?: return
         player?.pause()
 
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val outputDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "MediaStudioPro")
-        if (!outputDir.exists()) outputDir.mkdirs()
-        val outputFile = File(outputDir, "MediaStudio_Video_${resolution.name}_$timeStamp.${format.extension}")
+        val outputFile = StorageExportHelper.createVideoOutputFile(
+            context = this@VideoEditorActivity,
+            prefix = "MediaStudio_Video_${resolution.name}",
+            extension = format.extension
+        )
 
         binding.layoutExportProgress.visibility = View.VISIBLE
         binding.tvProgressPercent.text = "Memproses video ${resolution.label} (${format.displayName})..."
@@ -377,8 +379,10 @@ class VideoEditorActivity : AppCompatActivity() {
                         binding.tvProgressPercent.text = "Exporting: ${state.percentage}%"
                     }
                     is VideoEffectTransformer.TransformState.Success -> {
+                        StorageExportHelper.syncExportedFile(this@VideoEditorActivity, outputFile, format.mimeType)
+                        val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
                         binding.layoutExportProgress.visibility = View.GONE
-                        Toast.makeText(this@VideoEditorActivity, "✅ Video (${format.extension.uppercase()} ${resolution.label}) selesai diexport!\nDisimpan di: ${outputFile.name}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@VideoEditorActivity, successMsg, Toast.LENGTH_LONG).show()
                     }
                     is VideoEffectTransformer.TransformState.Error -> {
                         binding.layoutExportProgress.visibility = View.GONE

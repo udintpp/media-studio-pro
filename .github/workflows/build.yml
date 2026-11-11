@@ -47,35 +47,51 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.5.3
-          name: "MediaStudio Pro v1.5.3 - Natural Organic Particles (Bling, Fireflies, Stars, Gold Dust), Text Metallic Shimmer & Star Glints"
+          tag_name: v1.5.4
+          name: "MediaStudio Pro v1.5.4 - Export Direct to DCIM/video-pro & dmc/video-pro, New Year Fireworks & Eid Ketupat Particles"
           body: |
-            ## ✨ MediaStudio Pro v1.5.3 - Natural Organic Particle World, Metallic Text Shimmer & Star Glints
+            ## 🎆 MediaStudio Pro v1.5.4 - Public Storage Export (DCIM/video-pro & dmc/video-pro), New Year Fireworks & Lebaran Ketupat
 
-            Pembaruan **MediaStudio Pro v1.5.3** menghadirkan simulasi partikel fisik organik tingkat lanjut dengan pergerakan acak natural (bebas, tidak berbaris kaku), efek kilauan sapuan metalik pada teks (*Metallic Shimmer Sweep*), bintang kilau 4-sudut (*Star Glint Sparkles*), serta palet warna mewah termasuk Emas 24K, Rose Gold, dan Champagne:
+            Pembaruan **MediaStudio Pro v1.5.4** membawa perbaikan penting pada penyimpanan hasil export agar langsung tersimpan di penyimpanan publik dan muncul di Galeri, serta penambahan efek partikel tematik spesial Tahun Baru dan Hari Raya Idul Fitri:
 
             ---
 
-            ### 🚀 Fitur Baru & Peningkatan di v1.5.3:
+            ### 🚀 Fitur Baru & Peningkatan di v1.5.4:
 
-            1. ✨ **Partikel Cahaya Bling-Bling & Diamond Sparkles:**
+            1. 📁 **Penyimpanan Export Langsung ke Storage Publik (`DCIM/video-pro` & `dmc/video-pro`):**
+               - Semua hasil export video (Editor Video, After Effects Studio VFX, Slideshow Foto, Pemotong/Penyambung Klip, dan Mixer Audio) kini tersimpan langsung di:
+                 - `/storage/emulated/0/DCIM/video-pro/`
+                 - `/storage/emulated/0/dmc/video-pro/`
+               - Terintegrasi penuh dengan `MediaStore` dan `MediaScannerConnection` sehingga **otomatis langsung muncul di Galeri / Foto dan Pengelola Berkas Android** tanpa delay.
+               - Izin penyimpanan penuh (`MANAGE_EXTERNAL_STORAGE`, `WRITE_EXTERNAL_STORAGE`, `READ_EXTERNAL_STORAGE`).
+
+            2. 🎆 **Simulasi Partikel Kembang Api Tahun Baru (New Year Fireworks):**
+               - Efek kembang api spektakuler dengan fase roket meluncur dari bawah dengan ekor asap/api ke langit, meledak mekar radial 360° (*radial floral burst*), percikan kilau bertaburan dengan gaya gravitasi jatuh alami, kilat cahaya detonasi langit, dan variasi warna permata semarak (Ruby, Emas, Cyan, Zamrud, Violet).
+
+            3. 🕌 **Simulasi Partikel Ketupat Lebaran (Eid Mubarak Festive):**
+               - Dekorasi anyaman ketupat hijau zamrud & emas janur melayang anggun dengan gerakan mengayun lembut (*gentle sinusoidal swaying*), sepasang pita janur kelapa yang berkibar tertiup angin sepoi-sepoi, dan pendaran kilau bintang berkah Idul Fitri.
+
+            4. ⚙️ **Integrasi Lengkap:**
+               - Mendukung pengaturan jumlah partikel (10-300), kecepatan gerak, ukuran, palet warna, arah gerakan acak natural, dan bintang kilau *Star Glint*.
+
+            5. ✨ **Partikel Cahaya Bling-Bling & Diamond Sparkles:**
                - Kilauan permata tajam dengan bintang 4-sudut berkilau (*4-point diamond cross flare*) yang berdenyut dinamis dan memancarkan pendaran cahaya mewah.
 
-            2. 🌟 **Kunang-Kunang (Fireflies Bioluminescent Organik):**
+            6. 🌟 **Kunang-Kunang (Fireflies Bioluminescent Organik):**
                - Simulasi kunang-kunang melayang bebas di udara dengan pendaran cahaya hangat natural, bernapas lembut (*soft pulsing luminescence*), dan bergerak meliuk-liuk alami.
 
-            3. ⭐ **Bintang & Kosmik (Twinkling Stars & Shooting Star):**
+            7. ⭐ **Bintang & Kosmik (Twinkling Stars & Shooting Star):**
                - Hamparan bintang berkilau kosmik di langit malam dengan periode kedip acak, dilengkapi lintasan bintang jatuh / meteor berekor komet yang melesat secara berkala.
 
-            4. 👑 **Debu Emas Mewah (Royal Gold Flakes) & Magic Fairy Dust:**
+            8. 👑 **Debu Emas Mewah (Royal Gold Flakes) & Magic Fairy Dust:**
                - Serpihan debu emas 24K berkilauan yang melayang lembut terbawa hembusan angin halus dengan pantulan kilau metalik, serta debu sihir pelangi mistik.
 
-            5. 🍃 **Gerakan Partikel Alami & Random Arah (Physics-based Organic Motion):**
+            9. 🍃 **Gerakan Partikel Alami & Random Arah (Physics-based Organic Motion):**
                - Setiap partikel memiliki vektor kecepatan, frekuensi osilasi ganda, dan fase hidup independen sehingga **tidak lagi bergerak berbaris kaku bersamaan**.
                - 5 Pilihan Pola Gerakan: **Gerak Acak Alami (Random Wander / Brownian Motion)**, **Memancar Bebas 360° (Radial Burst)**, **Melayang Naik Organik (Upward Float with Wind)**, **Pusaran Kosmik (Vortex Swirl)**, dan **Melayang Turun Lembut (Downward Drift)**.
                - Pengaturan tingkat **Turbulensi & Keacakan Arah** (0.4x s/d 2.8x) untuk menentukan keliaran aliran partikel.
 
-            6. 🎨 **9 Palet Warna Partikel Lengkap:**
+            10. 🎨 **9 Palet Warna Partikel Lengkap:**
                - **Emas Mewah (Royal Gold & Amber)**
                - **Berlian Cyan (Diamond Crystal)**
                - **Kunang-Kunang (Bioluminescent Lime-Yellow)**
@@ -86,14 +102,14 @@ jobs:
                - **Amethyst Ungu (Royal Violet)**
                - **Multi-Warna Spektakuler**
 
-            7. ✨ **Kilauan Cahaya Sapuan Teks (Metallic Shimmer Sweep):**
+            11. ✨ **Kilauan Cahaya Sapuan Teks (Metallic Shimmer Sweep):**
                - Efek sapuan kilau cahaya diagonal (*luminous sheen sweep*) yang melintasi huruf-huruf teks timbul 3D secara berkesinambungan ala intro sinematik bioskop.
                - Kustomisasi warna kilau (Emas Murni, Perak Berlian, Cyan Neon, Rose Pink) dan kecepatan sapuan kilau.
 
-            8. ⭐ **Kilauan Bintang di Sudut Teks (Star Glint Sparkles):**
+            12. ⭐ **Kilauan Bintang di Sudut Teks (Star Glint Sparkles):**
                - Titik-titik bintang kilau 4-sudut tajam berkilip (*star flare glints*) di sudut-sudut huruf judul dengan rotasi dan pulsasi cahaya dinamis.
 
-            9. 👑 **Koleksi Warna Emas Mewah Lengkap untuk Teks:**
+            13. 👑 **Koleksi Warna Emas Mewah Lengkap untuk Teks:**
                - Emas Murni 24K (`#FFD700`), Rose Gold Mewah (`#B76E79`), Champagne Gold Sinematik (`#F7E7CE`), Bronze Metalik (`#CD7F32`), dan Emas Kuning Cerah (`#FBBF24`).
 
             1. ⬛ **Knoll Unmult Alpha Keyer:**

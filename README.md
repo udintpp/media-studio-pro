@@ -17,7 +17,12 @@
 - **Video Chroma Key Transparan:** Tandai warna latar video dengan Pipet atau preset Layar Hijau (*Green Screen*) / Layar Biru (*Blue Screen*) untuk dihapus jadi transparan (WebM VP9 dengan Alpha / Animated GIF).
 - **Ganti Background Video:** Dukungan mengganti latar belakang video dengan Foto dari Galeri, Video lain dari Galeri, atau Warna Solid baru, lengkap dengan thumbnail pratinjau langsung (*Live Preview*).
 
-### 2. 📁 Format Export Lengkap (Foto & Video)
+### 2. 📁 Format Export Lengkap & Lokasi Penyimpanan Publik
+- **Penyimpanan Langsung ke Storage Publik (`DCIM/video-pro` & `dmc/video-pro`):**
+  - Semua file video dan foto hasil ekspor otomatis tersimpan ganda di:
+    - `/storage/emulated/0/DCIM/video-pro/`
+    - `/storage/emulated/0/dmc/video-pro/`
+  - Terintegrasi langsung dengan `MediaStore` dan `MediaScannerConnection` Android sehingga **langsung muncul di aplikasi Galeri, Google Foto, dan File Manager**.
 - **Format Foto Terlengkap:**
   - `PNG` (Lossless, Mendukung Transparansi Penuh)
   - `JPG / JPEG` (Standar Foto)
@@ -50,7 +55,7 @@
 - **⚙️ Kustom Durasi Komposisi (Custom Duration):** Pengaturan durasi komposisi bebas: preset cepat (3s, 5s, 10s, 15s, 30s, 60s) atau input manual hingga 300 detik dengan sinkronisasi langsung pada timeline seekbar dan export rendering.
 - **📐 Kustom Resolusi & Rasio Aspek Layar:** Rasio standar industri: **16:9 Landscape (YouTube)**, **9:16 Vertikal (TikTok/Reels/Shorts)**, **1:1 Persegi (Instagram)**, **4:5 Sinematik Portrait**, dan **21:9 Ultrawide Bioskop**, serta opsi resolusi render hingga **4K UHD (3840x2160)**.
 - **🎛️ Simulasi Partikel Organik Alami & Penuh Kustomisasi (Particle World):**
-  - *Tipe Partikel:* **✨ Bling-Bling & Diamond Sparkles**, **🌟 Kunang-Kunang (Fireflies Bioluminescent Organik)**, **⭐ Bintang & Kosmik (Twinkling Stars & Shooting Star)**, **👑 Debu Emas Mewah (Royal Gold Flakes)**, **🧚‍♀️ Magic Fairy Dust**, **🔥 Sparks & Embers**, **🌧️ Rain & Mist**, **❄️ Snow Drift**, **🔮 Bokeh Orbs**.
+  - *Tipe Partikel:* **✨ Bling-Bling & Diamond Sparkles**, **🌟 Kunang-Kunang (Fireflies Bioluminescent Organik)**, **⭐ Bintang & Kosmik (Twinkling Stars & Shooting Star)**, **👑 Debu Emas Mewah (Royal Gold Flakes)**, **🧚‍♀️ Magic Fairy Dust**, **🔥 Sparks & Embers**, **🌧️ Rain & Mist**, **❄️ Snow Drift**, **🔮 Bokeh Orbs**, **🎆 Kembang Api Tahun Baru (New Year Fireworks)**, **🕌 Ketupat Lebaran (Eid Mubarak Festive)**.
   - *Gerakan Alami & Bebas (Tidak Baris):* Menggunakan simulasi Brown/harmonik acak sehingga partikel melayang bebas alami tanpa pergerakan kaku sejajar.
   - *5 Pola Gerakan:* **Gerak Acak Alami (Random Wander)**, **Memancar Bebas 360° (Radial Burst)**, **Melayang Naik Organik (Upward Float)**, **Pusaran Kosmik (Vortex Swirl)**, dan **Melayang Turun Lembut (Downward Drift)**.
   - *Kontrol Turbulensi & Keacakan:* Pengaturan keacakan aliran arah (0.4x s/d 2.8x) dan laju kedipan/pulsasi.

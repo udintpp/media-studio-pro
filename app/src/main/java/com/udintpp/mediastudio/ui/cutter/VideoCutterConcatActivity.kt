@@ -23,6 +23,7 @@ import com.udintpp.mediastudio.data.model.ExportResolution
 import com.udintpp.mediastudio.data.model.VideoClip
 import com.udintpp.mediastudio.databinding.ActivityVideoCutterConcatBinding
 import com.udintpp.mediastudio.engine.video.VideoEffectTransformer
+import com.udintpp.mediastudio.util.StorageExportHelper
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
@@ -162,10 +163,11 @@ class VideoCutterConcatActivity : AppCompatActivity() {
 
     private fun exportTrimmedVideo() {
         val uri = singleVideoUri ?: return
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val outputDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "MediaStudioPro")
-        if (!outputDir.exists()) outputDir.mkdirs()
-        val outputFile = File(outputDir, "Potong_Video_$timeStamp.mp4")
+        val outputFile = StorageExportHelper.createVideoOutputFile(
+            context = this@VideoCutterConcatActivity,
+            prefix = "Potong_Video",
+            extension = "mp4"
+        )
 
         Toast.makeText(this, "Mengekspor video terpotong...", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
@@ -179,7 +181,9 @@ class VideoCutterConcatActivity : AppCompatActivity() {
             ).collectLatest { state ->
                 when (state) {
                     is VideoEffectTransformer.TransformState.Success -> {
-                        Toast.makeText(this@VideoCutterConcatActivity, "✅ Video selesai dipotong!\nFile: ${outputFile.name}", Toast.LENGTH_LONG).show()
+                        StorageExportHelper.syncExportedFile(this@VideoCutterConcatActivity, outputFile, "video/mp4")
+                        val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
+                        Toast.makeText(this@VideoCutterConcatActivity, successMsg, Toast.LENGTH_LONG).show()
                     }
                     is VideoEffectTransformer.TransformState.Error -> {
                         Toast.makeText(this@VideoCutterConcatActivity, "Gagal: ${state.message}", Toast.LENGTH_LONG).show()
@@ -196,10 +200,11 @@ class VideoCutterConcatActivity : AppCompatActivity() {
             return
         }
 
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val outputDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "MediaStudioPro")
-        if (!outputDir.exists()) outputDir.mkdirs()
-        val outputFile = File(outputDir, "Sambung_Video_$timeStamp.mp4")
+        val outputFile = StorageExportHelper.createVideoOutputFile(
+            context = this@VideoCutterConcatActivity,
+            prefix = "Sambung_Video",
+            extension = "mp4"
+        )
 
         Toast.makeText(this, "Menyambungkan ${multiClips.size} video...", Toast.LENGTH_SHORT).show()
         lifecycleScope.launch {
@@ -211,7 +216,9 @@ class VideoCutterConcatActivity : AppCompatActivity() {
             ).collectLatest { state ->
                 when (state) {
                     is VideoEffectTransformer.TransformState.Success -> {
-                        Toast.makeText(this@VideoCutterConcatActivity, "✅ Video berhasil digabungkan!\nFile: ${outputFile.name}", Toast.LENGTH_LONG).show()
+                        StorageExportHelper.syncExportedFile(this@VideoCutterConcatActivity, outputFile, "video/mp4")
+                        val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
+                        Toast.makeText(this@VideoCutterConcatActivity, successMsg, Toast.LENGTH_LONG).show()
                     }
                     is VideoEffectTransformer.TransformState.Error -> {
                         Toast.makeText(this@VideoCutterConcatActivity, "Gagal menyambung: ${state.message}", Toast.LENGTH_LONG).show()

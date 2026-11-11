@@ -19,6 +19,7 @@ import com.udintpp.mediastudio.R
 import com.udintpp.mediastudio.data.model.ExportResolution
 import com.udintpp.mediastudio.databinding.ActivitySlideshowBinding
 import com.udintpp.mediastudio.engine.video.PhotoToVideoEngine
+import com.udintpp.mediastudio.util.StorageExportHelper
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
@@ -101,10 +102,11 @@ class SlideshowActivity : AppCompatActivity() {
 
     private fun startSlideshowRendering() {
         val selectedResolution = ExportResolution.values()[binding.spinnerSlideshowResolution.selectedItemPosition]
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val outputDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "MediaStudioPro")
-        if (!outputDir.exists()) outputDir.mkdirs()
-        val outputFile = File(outputDir, "Slideshow_${selectedResolution.name}_$timeStamp.mp4")
+        val outputFile = StorageExportHelper.createVideoOutputFile(
+            context = this@SlideshowActivity,
+            prefix = "Slideshow_${selectedResolution.name}",
+            extension = "mp4"
+        )
 
         binding.pbSlideshow.visibility = View.VISIBLE
         binding.tvSlideshowProgressText.visibility = View.VISIBLE
@@ -124,10 +126,12 @@ class SlideshowActivity : AppCompatActivity() {
                         binding.tvSlideshowProgressText.text = "Merender video: ${state.percent}% (Slide ${state.currentSlide}/${state.totalSlides})"
                     }
                     is PhotoToVideoEngine.SlideshowState.Success -> {
+                        StorageExportHelper.syncExportedFile(this@SlideshowActivity, outputFile, "video/mp4")
+                        val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
                         binding.pbSlideshow.visibility = View.GONE
                         binding.tvSlideshowProgressText.visibility = View.GONE
                         binding.btnRenderSlideshow.isEnabled = true
-                        Toast.makeText(this@SlideshowActivity, "✅ Video Slideshow berhasil dibuat!\nFile: ${outputFile.name}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@SlideshowActivity, successMsg, Toast.LENGTH_LONG).show()
                     }
                     is PhotoToVideoEngine.SlideshowState.Error -> {
                         binding.pbSlideshow.visibility = View.GONE

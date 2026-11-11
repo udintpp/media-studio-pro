@@ -804,6 +804,227 @@ object AfterEffectsRenderer {
                     canvas.drawCircle(posX, posY, bokehR, pPaint)
                     pPaint.style = Paint.Style.FILL
                 }
+                AeEffectType.PARTICLE_FIREWORKS -> {
+                    // New Year Fireworks: Rocket launch + Radial burst + Glittering embers + Gravity fall
+                    val sparksPerShell = 16
+                    val shellId = i / sparksPerShell
+                    val sparkId = i % sparksPerShell
+
+                    val shellSeed = (shellId * 1664525L + 1013904223L)
+                    val shellHashX = ((shellSeed ushr 16 and 0xFFFF) % 1000) / 1000f
+                    val shellHashY = ((shellSeed ushr 8 and 0xFFFF) % 1000) / 1000f
+
+                    val cycleSec = 2.8f / globalSpeed.coerceAtLeast(0.2f)
+                    val shellStagger = (shellId * 0.55f)
+                    val shellTime = (t + shellStagger) % cycleSec
+                    val shellProgress = shellTime / cycleSec // 0.0 to 1.0
+
+                    val burstCenterX = (0.15f + shellHashX * 0.7f) * w
+                    val burstCenterY = (0.15f + shellHashY * 0.4f) * h
+
+                    if (shellProgress < 0.32f) {
+                        // Phase 1: Rocket Launch ascending from bottom to detonation center
+                        val launchP = shellProgress / 0.32f
+                        val rocketY = h - (h - burstCenterY) * launchP
+                        val rocketX = burstCenterX + sin(launchP * 6.28f + shellId.toFloat()) * 8f
+
+                        if (sparkId == 0) {
+                            // Rocket Head Spark
+                            val rocketPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                                color = Color.parseColor("#FEF08A")
+                                xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+                            }
+                            canvas.drawCircle(rocketX, rocketY, 5.5f * indivSize, rocketPaint)
+
+                            // Smoke and flame trail behind ascending rocket
+                            val trailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                                strokeWidth = 3.5f * indivSize
+                                strokeCap = Paint.Cap.ROUND
+                                shader = LinearGradient(
+                                    rocketX, rocketY, rocketX, rocketY + 65f * indivSize,
+                                    intArrayOf(Color.WHITE, Color.parseColor("#F59E0B"), Color.TRANSPARENT),
+                                    floatArrayOf(0f, 0.4f, 1f),
+                                    Shader.TileMode.CLAMP
+                                )
+                            }
+                            canvas.drawLine(rocketX, rocketY, rocketX, rocketY + 65f * indivSize, trailPaint)
+                            drawStarGlint(canvas, rocketX, rocketY, 6f * indivSize, Color.WHITE, 255)
+                        } else {
+                            // Droplet sparks trailing rocket
+                            val trailOffset = (sparkId.toFloat() / sparksPerShell) * 45f * indivSize
+                            val dropAlpha = ((1f - (sparkId.toFloat() / sparksPerShell)) * 180).toInt()
+                            pPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+                            pPaint.color = Color.parseColor("#FDE047")
+                            pPaint.alpha = dropAlpha
+                            canvas.drawCircle(
+                                rocketX + (hash0 - 0.5f) * 6f * indivSize,
+                                rocketY + trailOffset,
+                                1.8f * indivSize,
+                                pPaint
+                            )
+                        }
+                    } else {
+                        // Phase 2: Spectacular Radial Burst Explosion!
+                        val burstP = (shellProgress - 0.32f) / 0.68f // 0.0 to 1.0
+                        val burstFade = (1f - burstP).coerceIn(0f, 1f)
+                        val sparkAlpha = (burstFade * 255).toInt().coerceIn(0, 255)
+
+                        // Central Detonation Flash
+                        if (sparkId == 0 && burstP < 0.18f) {
+                            val flashAlpha = ((1f - (burstP / 0.18f)) * 220).toInt()
+                            val flashRadius = (50f + burstP * 120f) * indivSize
+                            val flashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                                xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+                                shader = RadialGradient(
+                                    burstCenterX, burstCenterY, flashRadius,
+                                    intArrayOf(Color.WHITE, Color.argb(flashAlpha, 254, 240, 138), Color.TRANSPARENT),
+                                    floatArrayOf(0f, 0.35f, 1f),
+                                    Shader.TileMode.CLAMP
+                                )
+                            }
+                            canvas.drawCircle(burstCenterX, burstCenterY, flashRadius, flashPaint)
+                        }
+
+                        // Radial spark projectile
+                        val baseAngle = (sparkId.toFloat() / sparksPerShell) * 2f * Math.PI.toFloat()
+                        val angleJitter = (hash1 - 0.5f) * 0.3f
+                        val angle = baseAngle + angleJitter
+                        val burstRadius = sin(burstP * (Math.PI.toFloat() / 2f)) * (110f + shellHashY * 110f) * indivSize
+                        val gravityDrop = (burstP * burstP) * 55f * indivSize
+                        val sparkX = burstCenterX + cos(angle) * burstRadius + (hash2 - 0.5f) * 12f
+                        val sparkY = burstCenterY + sin(angle) * burstRadius + gravityDrop
+
+                        val festiveColors = intArrayOf(
+                            Color.parseColor("#FF2D55"), // Crimson Ruby
+                            Color.parseColor("#FFD700"), // Pure Gold
+                            Color.parseColor("#00F0FF"), // Electric Cyan
+                            Color.parseColor("#10B981"), // Emerald Green
+                            Color.parseColor("#A855F7"), // Royal Violet
+                            Color.parseColor("#FF8C00"), // Radiant Orange
+                            Color.parseColor("#FFFFFF")  // Pure White
+                        )
+                        val sparkColor = if (config.particleColorPalette != "MULTI") {
+                            getParticlePaletteColor(config.particleColorPalette, seed, timeMs)
+                        } else {
+                            festiveColors[shellId % festiveColors.size]
+                        }
+
+                        pPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+                        pPaint.color = sparkColor
+                        pPaint.alpha = sparkAlpha
+                        canvas.drawCircle(sparkX, sparkY, (3.5f * burstFade + 1.2f) * indivSize, pPaint)
+
+                        // Twinkling Star Glints on burst tips
+                        if (sparkAlpha > 50 && (i % 2 == 0 || config.isParticleStarGlintEnabled)) {
+                            drawStarGlint(
+                                canvas,
+                                sparkX,
+                                sparkY,
+                                (5.0f * burstFade + 1f) * indivSize,
+                                sparkColor,
+                                sparkAlpha,
+                                (t * 180f + sparkId * 45f)
+                            )
+                        }
+                    }
+                }
+                AeEffectType.PARTICLE_KETUPAT -> {
+                    // Eid Mubarak Festive Ketupat: Woven emerald-gold diamond with fluttering janur ribbon tails
+                    val ketupatSize = (16f + hash0 * 16f) * indivSize
+                    val swayAngle = sin(t * 1.6f + hash1 * 6.28f) * 16f
+
+                    canvas.save()
+                    canvas.translate(posX, posY)
+                    canvas.rotate(swayAngle)
+
+                    // Diamond body path (rotated woven shape)
+                    val diamondW = ketupatSize * 0.88f
+                    val diamondH = ketupatSize
+                    val diamondPath = Path().apply {
+                        moveTo(0f, -diamondH)
+                        lineTo(diamondW, 0f)
+                        lineTo(0f, diamondH)
+                        lineTo(-diamondW, 0f)
+                        close()
+                    }
+
+                    // Emerald-gold gradient body fill
+                    val ketupatFill = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        style = Paint.Style.FILL
+                        shader = LinearGradient(
+                            -diamondW, -diamondH, diamondW, diamondH,
+                            intArrayOf(
+                                Color.parseColor("#34D399"), // Mint/Emerald
+                                Color.parseColor("#059669"), // Deep Green
+                                Color.parseColor("#065F46")  // Forest
+                            ),
+                            floatArrayOf(0f, 0.55f, 1f),
+                            Shader.TileMode.CLAMP
+                        )
+                        alpha = curAlpha
+                    }
+                    canvas.drawPath(diamondPath, ketupatFill)
+
+                    // Woven janur criss-cross texture (Anyaman Ketupat)
+                    val weavePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        style = Paint.Style.STROKE
+                        strokeWidth = 1.6f * indivSize
+                        color = Color.parseColor("#FBBF24") // Emas Janur
+                        alpha = (curAlpha * 0.75f).toInt()
+                    }
+                    // Diagonals
+                    canvas.drawLine(-diamondW * 0.5f, -diamondH * 0.5f, diamondW * 0.5f, diamondH * 0.5f, weavePaint)
+                    canvas.drawLine(-diamondW * 0.5f, diamondH * 0.5f, diamondW * 0.5f, -diamondH * 0.5f, weavePaint)
+                    // Mid lines
+                    canvas.drawLine(0f, -diamondH * 0.85f, 0f, diamondH * 0.85f, weavePaint)
+                    canvas.drawLine(-diamondW * 0.8f, 0f, diamondW * 0.8f, 0f, weavePaint)
+
+                    // Outer golden border
+                    val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        style = Paint.Style.STROKE
+                        strokeWidth = 2.0f * indivSize
+                        color = Color.parseColor("#FDE047") // Gold border
+                        alpha = curAlpha
+                    }
+                    canvas.drawPath(diamondPath, borderPaint)
+
+                    // Fluttering Coconut Ribbon Tails (Pita Janur Kelapa)
+                    val tailLen = ketupatSize * 1.6f
+                    val tailWave1 = sin(t * 3.6f + hash2 * 6.28f) * (7f * indivSize)
+                    val tailWave2 = cos(t * 3.2f + hash3 * 6.28f) * (7f * indivSize)
+
+                    val ribbonPaint1 = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                        style = Paint.Style.STROKE
+                        strokeWidth = 2.4f * indivSize
+                        strokeCap = Paint.Cap.ROUND
+                        color = Color.parseColor("#34D399")
+                        alpha = (curAlpha * 0.9f).toInt()
+                    }
+                    val ribbon1 = Path().apply {
+                        moveTo(-2.5f * indivSize, diamondH)
+                        quadTo(-6f * indivSize + tailWave1, diamondH + tailLen * 0.5f, -3f * indivSize + tailWave1 * 1.3f, diamondH + tailLen)
+                    }
+                    canvas.drawPath(ribbon1, ribbonPaint1)
+
+                    val ribbonPaint2 = Paint(ribbonPaint1).apply {
+                        color = Color.parseColor("#FBBF24") // Ribbon gold
+                    }
+                    val ribbon2 = Path().apply {
+                        moveTo(2.5f * indivSize, diamondH)
+                        quadTo(6f * indivSize + tailWave2, diamondH + tailLen * 0.5f, 4f * indivSize + tailWave2 * 1.4f, diamondH + tailLen * 1.15f)
+                    }
+                    canvas.drawPath(ribbon2, ribbonPaint2)
+
+                    canvas.restore()
+
+                    // Eid blessing star sparkles
+                    if (i % 2 == 0) {
+                        val sparkleAngle = t * 1.8f + hash0 * 6.28f
+                        val spX = posX + cos(sparkleAngle) * (ketupatSize * 1.3f)
+                        val spY = posY + sin(sparkleAngle) * (ketupatSize * 1.3f)
+                        drawStarGlint(canvas, spX, spY, 4.5f * indivSize, Color.parseColor("#FDE047"), (curAlpha * 0.85f).toInt())
+                    }
+                }
                 else -> {}
             }
         }

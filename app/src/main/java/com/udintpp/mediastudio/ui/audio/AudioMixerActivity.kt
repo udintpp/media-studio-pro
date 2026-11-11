@@ -14,6 +14,7 @@ import com.udintpp.mediastudio.data.model.AudioMixConfig
 import com.udintpp.mediastudio.data.model.EqualizerPreset
 import com.udintpp.mediastudio.databinding.ActivityAudioMixerBinding
 import com.udintpp.mediastudio.engine.audio.AudioMixerEngine
+import com.udintpp.mediastudio.util.StorageExportHelper
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.io.File
@@ -135,10 +136,11 @@ class AudioMixerActivity : AppCompatActivity() {
 
         audioConfig.equalizerPreset = EqualizerPreset.values()[binding.spinnerEqualizer.selectedItemPosition]
 
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val outputDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "MediaStudioPro")
-        if (!outputDir.exists()) outputDir.mkdirs()
-        val outputFile = File(outputDir, "AudioMix_$timeStamp.mp4")
+        val outputFile = StorageExportHelper.createVideoOutputFile(
+            context = this@AudioMixerActivity,
+            prefix = "AudioMix",
+            extension = "mp4"
+        )
 
         Toast.makeText(this, "Memproses efek & mixer audio...", Toast.LENGTH_SHORT).show()
         binding.btnExportAudioVideo.isEnabled = false
@@ -152,8 +154,10 @@ class AudioMixerActivity : AppCompatActivity() {
             ).collectLatest { state ->
                 when (state) {
                     is AudioMixerEngine.AudioMixState.Success -> {
+                        StorageExportHelper.syncExportedFile(this@AudioMixerActivity, outputFile, "video/mp4")
+                        val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
                         binding.btnExportAudioVideo.isEnabled = true
-                        Toast.makeText(this@AudioMixerActivity, "✅ Video & Efek Audio berhasil disimpan!\nFile: ${outputFile.name}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@AudioMixerActivity, successMsg, Toast.LENGTH_LONG).show()
                     }
                     is AudioMixerEngine.AudioMixState.Error -> {
                         binding.btnExportAudioVideo.isEnabled = true

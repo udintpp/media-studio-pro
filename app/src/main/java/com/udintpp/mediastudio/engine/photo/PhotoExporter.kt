@@ -160,6 +160,33 @@ object PhotoExporter {
             resolver.update(uri, values, null, null)
         }
 
+        try {
+            val dcimDir = File("/storage/emulated/0/DCIM/video-pro")
+            if (!dcimDir.exists()) dcimDir.mkdirs()
+            val dcimFile = File(dcimDir, filename)
+            FileOutputStream(dcimFile).use { out ->
+                ImageFormatEncoder.encode(bitmap, format, quality, out)
+                out.flush()
+            }
+
+            val dmcDir = File("/storage/emulated/0/dmc/video-pro")
+            if (!dmcDir.exists()) dmcDir.mkdirs()
+            val dmcFile = File(dmcDir, filename)
+            FileOutputStream(dmcFile).use { out ->
+                ImageFormatEncoder.encode(bitmap, format, quality, out)
+                out.flush()
+            }
+
+            android.media.MediaScannerConnection.scanFile(
+                context,
+                arrayOf(dcimFile.absolutePath, dmcFile.absolutePath),
+                arrayOf(format.mimeType),
+                null
+            )
+        } catch (e: Exception) {
+            // Backup direct file creation is optional
+        }
+
         return uri
     }
 }

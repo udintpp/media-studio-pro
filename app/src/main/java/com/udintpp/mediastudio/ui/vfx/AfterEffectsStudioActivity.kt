@@ -43,6 +43,7 @@ import com.udintpp.mediastudio.databinding.ActivityAfterEffectsStudioBinding
 import com.udintpp.mediastudio.engine.video.VideoEffectTransformer
 import com.udintpp.mediastudio.engine.vfx.AfterEffectsRenderer
 import com.udintpp.mediastudio.ui.dialog.ExportMediaDialog
+import com.udintpp.mediastudio.util.StorageExportHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
@@ -807,7 +808,9 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             "🔥 Sparks & Embers (Percikan Api & Bara)",
             "🌧️ Rain & Mist (Hujan Sinematik)",
             "❄️ Snow Drift (Butiran Salju Lembut)",
-            "🔮 Bokeh Orbs (Cahaya Aperture Optik)"
+            "🔮 Bokeh Orbs (Cahaya Aperture Optik)",
+            "🎆 Kembang Api Tahun Baru (New Year Fireworks)",
+            "🕌 Ketupat Lebaran (Eid Mubarak Festive)"
         )
         AlertDialog.Builder(this)
             .setTitle("Pilih Simulasi Partikel (Particle World)")
@@ -822,6 +825,8 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     7 -> AeEffectType.PARTICLE_RAIN
                     8 -> AeEffectType.PARTICLE_SNOW
                     9 -> AeEffectType.PARTICLE_BOKEH
+                    10 -> AeEffectType.PARTICLE_FIREWORKS
+                    11 -> AeEffectType.PARTICLE_KETUPAT
                     else -> null
                 }
                 binding.btnVfxParticles.text = if (aeConfig.activeParticleType != null) "✨ Partikel: ON" else "✨ Partikel Sparks/Rain"
@@ -1608,10 +1613,11 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         val uri = mediaUri ?: return
         val base = baseBitmap ?: return
 
-        val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
-        val outputDir = File(getExternalFilesDir(Environment.DIRECTORY_MOVIES), "MediaStudioPro_VFX")
-        if (!outputDir.exists()) outputDir.mkdirs()
-        val outputFile = File(outputDir, "MediaStudio_AfterEffects_${resolution.name}_$timeStamp.${format.extension}")
+        val outputFile = StorageExportHelper.createVideoOutputFile(
+            context = this@AfterEffectsStudioActivity,
+            prefix = "MediaStudio_AfterEffects_${resolution.name}",
+            extension = format.extension
+        )
 
         binding.layoutVfxExportProgress.visibility = View.VISIBLE
         binding.tvVfxProgressPercent.text = "Mengekspor VFX ${resolution.label} (${format.displayName})..."
@@ -1645,9 +1651,12 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     fos.flush()
                     fos.close()
 
+                    StorageExportHelper.syncExportedFile(this@AfterEffectsStudioActivity, outputFile, format.mimeType)
+                    val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
+
                     withContext(Dispatchers.Main) {
                         binding.layoutVfxExportProgress.visibility = View.GONE
-                        Toast.makeText(this@AfterEffectsStudioActivity, "✅ Animasi VFX After Effects selesai diexport!\nDisimpan di: ${outputFile.name}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@AfterEffectsStudioActivity, successMsg, Toast.LENGTH_LONG).show()
                     }
                 } else if (!isVideo) {
                     // Photo base: Render full After Effects composition to MP4 video using hardware MediaCodec
@@ -1702,9 +1711,12 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     }
                     muxer.release()
 
+                    StorageExportHelper.syncExportedFile(this@AfterEffectsStudioActivity, outputFile, format.mimeType)
+                    val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
+
                     withContext(Dispatchers.Main) {
                         binding.layoutVfxExportProgress.visibility = View.GONE
-                        Toast.makeText(this@AfterEffectsStudioActivity, "✅ Video VFX After Effects ${resolution.label} selesai diexport!\nDisimpan di: ${outputFile.name}", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this@AfterEffectsStudioActivity, successMsg, Toast.LENGTH_LONG).show()
                     }
                 } else {
                     // Export video format with hardware transformer
@@ -1721,8 +1733,10 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                                     binding.tvVfxProgressPercent.text = "Exporting VFX: ${state.percentage}%"
                                 }
                                 is VideoEffectTransformer.TransformState.Success -> {
+                                    StorageExportHelper.syncExportedFile(this@AfterEffectsStudioActivity, outputFile, format.mimeType)
+                                    val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
                                     binding.layoutVfxExportProgress.visibility = View.GONE
-                                    Toast.makeText(this@AfterEffectsStudioActivity, "✅ Video VFX After Effects ${resolution.label} selesai diexport!\nDisimpan di: ${outputFile.name}", Toast.LENGTH_LONG).show()
+                                    Toast.makeText(this@AfterEffectsStudioActivity, successMsg, Toast.LENGTH_LONG).show()
                                 }
                                 is VideoEffectTransformer.TransformState.Error -> {
                                     binding.layoutVfxExportProgress.visibility = View.GONE
