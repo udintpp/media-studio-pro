@@ -6,13 +6,22 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.graphics.Color
+import android.graphics.SurfaceTexture
+import android.media.AudioAttributes
 import android.media.MediaMetadataRetriever
+import android.media.MediaPlayer
+import android.media.PlaybackParams
 import android.net.Uri
+import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.view.Gravity
+import android.view.Surface
+import android.view.TextureView
 import android.view.View
 import android.view.animation.LinearInterpolator
 import android.widget.EditText
+import android.widget.FrameLayout
 import android.widget.SeekBar
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -56,6 +65,21 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     private var isPlaying: Boolean = false
     private var timelineAnimator: ValueAnimator? = null
 
+    // Live Video Decoding & Playback Engine
+    private var mediaPlayer: MediaPlayer? = null
+    private var videoSurface: Surface? = null
+    private var isSurfaceAvailable = false
+    private var rawVideoWidth = 1280
+    private var rawVideoHeight = 720
+    private var videoRotation = 0
+
+    // Double-buffering for silky-smooth, zero-GC 60fps rendering
+    private var videoFrameBitmap: Bitmap? = null
+    private var outputBitmapA: Bitmap? = null
+    private var outputBitmapB: Bitmap? = null
+    private var activeBufferIndex = 0
+    private var lastPreviewUpdateMs: Long = 0L
+
     private val aeConfig = AeConfig()
 
     private enum class DragTarget {
@@ -83,8 +107,152 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         val type = contentResolver.getType(mediaUri!!) ?: ""
         isVideo = !type.startsWith("image/")
 
+        setupTextureView()
         loadMedia(mediaUri!!)
         setupListeners()
+    }
+
+    private fun setupTextureView() {
+        if (!isVideo) {
+            binding.textureVideoSource.visibility = View.GONE
+            return
+        }
+        binding.textureVideoSource.visibility = View.VISIBLE
+        binding.textureVideoSource.surfaceTextureListener = object : TextureView.SurfaceTextureListener {
+            override fun onSurfaceTextureAvailable(surface: SurfaceTexture, width: Int, height: Int) {
+                isSurfaceAvailable = true
+                videoSurface?.release()
+                videoSurface = Surface(surface)
+                mediaPlayer?.setSurface(videoSurface)
+                if (isVideo && isPlaying) {
+                    mediaPlayer?.start()
+                }
+            }
+            override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
+            override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
+                isSurfaceAvailable = false
+                videoSurface?.release()
+                videoSurface = null
+                mediaPlayer?.setSurface(null)
+                return true
+            }
+            override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {
+                onVideoFrameReady()
+            }
+        }
+    }
+
+    private fun initMediaPlayer(uri: Uri) {
+        if (!isVideo) return
+        try {
+            mediaPlayer?.release()
+            mediaPlayer = MediaPlayer().apply {
+                setDataSource(this@AfterEffectsStudioActivity, uri)
+                setAudioAttributes(
+                    AudioAttributes.Builder()
+                        .setContentType(AudioAttributes.CONTENT_TYPE_MOVIE)
+                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        .build()
+                )
+                isLooping = true
+                if (videoSurface != null) {
+                    setSurface(videoSurface)
+                }
+                setOnVideoSizeChangedListener { _, w, h ->
+                    if (w > 0 && h > 0) {
+                        rawVideoWidth = w
+                        rawVideoHeight = h
+                        adjustContainerAspect(w, h)
+                    }
+                }
+                setOnPreparedListener { mp ->
+                    if (durationMs <= 0L) {
+                        durationMs = mp.duration.toLong().coerceAtLeast(1000L)
+                        initTimeline()
+                    }
+                    if (videoSurface != null) {
+                        mp.setSurface(videoSurface)
+                    }
+                    mp.seekTo(0)
+                }
+                prepareAsync()
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
+
+    private fun adjustContainerAspect(videoWidth: Int, videoHeight: Int) {
+        val container = binding.layoutVfxContainer
+        container.post {
+            val cw = container.width
+            val ch = container.height
+            if (cw <= 0 || ch <= 0 || videoWidth <= 0 || videoHeight <= 0) return@post
+
+            val cAspect = cw.toFloat() / ch.toFloat()
+            val vAspect = videoWidth.toFloat() / videoHeight.toFloat()
+
+            val tw: Int
+            val th: Int
+            if (vAspect > cAspect) {
+                tw = cw
+                th = (cw / vAspect).toInt()
+            } else {
+                th = ch
+                tw = (ch * vAspect).toInt()
+            }
+
+            val lp = binding.textureVideoSource.layoutParams as FrameLayout.LayoutParams
+            lp.width = tw
+            lp.height = th
+            lp.gravity = Gravity.CENTER
+            binding.textureVideoSource.layoutParams = lp
+
+            val ivLp = binding.ivVfxPreview.layoutParams as FrameLayout.LayoutParams
+            ivLp.width = tw
+            ivLp.height = th
+            ivLp.gravity = Gravity.CENTER
+            binding.ivVfxPreview.layoutParams = ivLp
+        }
+    }
+
+    private fun onVideoFrameReady() {
+        val mp = mediaPlayer ?: return
+        if (!isVideo) return
+
+        val now = System.currentTimeMillis()
+        if (now - lastPreviewUpdateMs < 30L && isPlaying) {
+            return
+        }
+        lastPreviewUpdateMs = now
+
+        currentTimeMs = mp.currentPosition.toLong()
+        binding.seekbarTimeline.progress = currentTimeMs.toInt()
+        binding.tvTimelineTime.text = "${formatTime(currentTimeMs)} / ${formatTime(durationMs)}"
+
+        val vw = binding.textureVideoSource.width
+        val vh = binding.textureVideoSource.height
+        if (vw <= 0 || vh <= 0) return
+
+        val scale = if (vw > 960) 960f / vw else 1.0f
+        val targetW = (vw * scale).toInt().coerceAtLeast(100)
+        val targetH = (vh * scale).toInt().coerceAtLeast(100)
+
+        if (videoFrameBitmap == null || videoFrameBitmap!!.width != targetW || videoFrameBitmap!!.height != targetH) {
+            videoFrameBitmap?.recycle()
+            videoFrameBitmap = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
+        }
+
+        binding.textureVideoSource.getBitmap(videoFrameBitmap!!)
+        baseBitmap = videoFrameBitmap
+
+        val targetBuf = if (activeBufferIndex == 0) outputBitmapA else outputBitmapB
+        val output = AfterEffectsRenderer.renderFrame(videoFrameBitmap!!, currentTimeMs, aeConfig, targetBuf)
+        if (activeBufferIndex == 0) outputBitmapA = output else outputBitmapB = output
+        activeBufferIndex = 1 - activeBufferIndex
+
+        binding.ivVfxPreview.setImageBitmap(output)
+        binding.ivVfxPreview.invalidate()
     }
 
     private fun loadMedia(uri: Uri) {
@@ -95,13 +263,22 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     retriever.setDataSource(this@AfterEffectsStudioActivity, uri)
                     val durStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
                     val dur = durStr?.toLongOrNull() ?: 5000L
-                    durationMs = dur.coerceIn(1000L, 60000L)
+                    durationMs = dur.coerceIn(1000L, 300000L)
+                    val rotStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)
+                    videoRotation = rotStr?.toIntOrNull() ?: 0
+                    val rawW = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull() ?: 1280
+                    val rawH = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull() ?: 720
+                    rawVideoWidth = if (videoRotation == 90 || videoRotation == 270) rawH else rawW
+                    rawVideoHeight = if (videoRotation == 90 || videoRotation == 270) rawW else rawH
+
                     val frame = retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
                     retriever.release()
 
                     withContext(Dispatchers.Main) {
                         baseBitmap = frame ?: createFallbackBitmap()
                         initTimeline()
+                        adjustContainerAspect(rawVideoWidth, rawVideoHeight)
+                        initMediaPlayer(uri)
                         updatePreview()
                     }
                 } else {
@@ -113,6 +290,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     withContext(Dispatchers.Main) {
                         baseBitmap = bmp ?: createFallbackBitmap()
                         initTimeline()
+                        baseBitmap?.let { adjustContainerAspect(it.width, it.height) }
                         updatePreview()
                     }
                 }
@@ -160,7 +338,15 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                 if (fromUser) {
                     currentTimeMs = progress.toLong()
                     binding.tvTimelineTime.text = "${formatTime(currentTimeMs)} / ${formatTime(durationMs)}"
-                    updatePreview()
+                    if (isVideo && mediaPlayer != null) {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                            mediaPlayer?.seekTo(currentTimeMs, MediaPlayer.SEEK_CLOSEST)
+                        } else {
+                            mediaPlayer?.seekTo(currentTimeMs.toInt())
+                        }
+                    } else {
+                        updatePreview()
+                    }
                 }
             }
             override fun onStartTrackingTouch(seekBar: SeekBar?) {
@@ -532,6 +718,15 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     3 -> aeConfig.speedMultiplier = 1.5f
                     4 -> aeConfig.speedMultiplier = 2.0f
                     5 -> aeConfig.isTimeReversed = !aeConfig.isTimeReversed
+                }
+                if (isVideo && mediaPlayer != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    try {
+                        val params = mediaPlayer?.playbackParams ?: PlaybackParams()
+                        params.speed = aeConfig.speedMultiplier
+                        mediaPlayer?.playbackParams = params
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                    }
                 }
                 binding.btnVfxSpeed.text = if (aeConfig.isTimeReversed) "⚡ Speed: Reverse" else "⚡ Speed: ${aeConfig.speedMultiplier}x"
                 Toast.makeText(this, "Kecepatan timeline diatur: ${speeds[which]}", Toast.LENGTH_SHORT).show()
@@ -1142,35 +1337,66 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     }
 
     private fun updatePreview() {
-        val base = baseBitmap ?: return
-        val rendered = AfterEffectsRenderer.renderFrame(base, currentTimeMs, aeConfig)
+        val base = videoFrameBitmap ?: baseBitmap ?: return
+        val targetBuf = if (activeBufferIndex == 0) outputBitmapA else outputBitmapB
+        val rendered = AfterEffectsRenderer.renderFrame(base, currentTimeMs, aeConfig, targetBuf)
+        if (activeBufferIndex == 0) outputBitmapA = rendered else outputBitmapB = rendered
+        activeBufferIndex = 1 - activeBufferIndex
+
         binding.ivVfxPreview.setImageBitmap(rendered)
+        binding.ivVfxPreview.invalidate()
     }
 
     private fun startPlayback() {
         isPlaying = true
         binding.btnPlayPause.setImageResource(com.udintpp.mediastudio.R.drawable.ic_pause)
 
-        timelineAnimator?.cancel()
-        timelineAnimator = ValueAnimator.ofInt(currentTimeMs.toInt(), durationMs.toInt()).apply {
-            duration = durationMs - currentTimeMs
-            interpolator = LinearInterpolator()
-            addUpdateListener { anim ->
-                val p = anim.animatedValue as Int
-                currentTimeMs = p.toLong()
-                binding.seekbarTimeline.progress = p
-                binding.tvTimelineTime.text = "${formatTime(currentTimeMs)} / ${formatTime(durationMs)}"
-                updatePreview()
+        if (isVideo) {
+            try {
+                if (mediaPlayer == null && mediaUri != null) {
+                    initMediaPlayer(mediaUri!!)
+                }
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    val params = mediaPlayer?.playbackParams ?: PlaybackParams()
+                    params.speed = aeConfig.speedMultiplier
+                    mediaPlayer?.playbackParams = params
+                }
+                mediaPlayer?.start()
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
-            start()
+        } else {
+            timelineAnimator?.cancel()
+            timelineAnimator = ValueAnimator.ofInt(currentTimeMs.toInt(), durationMs.toInt()).apply {
+                duration = ((durationMs - currentTimeMs) / aeConfig.effectSpeed).toLong().coerceAtLeast(100L)
+                interpolator = LinearInterpolator()
+                addUpdateListener { anim ->
+                    val p = anim.animatedValue as Int
+                    currentTimeMs = p.toLong()
+                    binding.seekbarTimeline.progress = p
+                    binding.tvTimelineTime.text = "${formatTime(currentTimeMs)} / ${formatTime(durationMs)}"
+                    updatePreview()
+                }
+                start()
+            }
         }
     }
 
     private fun pausePlayback() {
         isPlaying = false
         binding.btnPlayPause.setImageResource(com.udintpp.mediastudio.R.drawable.ic_play)
-        timelineAnimator?.cancel()
-        timelineAnimator = null
+        if (isVideo) {
+            try {
+                if (mediaPlayer?.isPlaying == true) {
+                    mediaPlayer?.pause()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
+            }
+        } else {
+            timelineAnimator?.cancel()
+            timelineAnimator = null
+        }
     }
 
     private fun showExportVfxDialog() {
@@ -1359,8 +1585,28 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         return String.format("%02d:%02d", m, s)
     }
 
+    override fun onPause() {
+        super.onPause()
+        pausePlayback()
+    }
+
     override fun onDestroy() {
         super.onDestroy()
         pausePlayback()
+        try {
+            mediaPlayer?.stop()
+            mediaPlayer?.release()
+            mediaPlayer = null
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+        videoSurface?.release()
+        videoSurface = null
+        videoFrameBitmap?.recycle()
+        videoFrameBitmap = null
+        outputBitmapA?.recycle()
+        outputBitmapA = null
+        outputBitmapB?.recycle()
+        outputBitmapB = null
     }
 }

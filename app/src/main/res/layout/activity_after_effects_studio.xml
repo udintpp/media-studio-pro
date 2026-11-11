@@ -56,15 +56,23 @@
 
     <!-- VFX Live Preview Canvas Frame -->
     <FrameLayout
+        android:id="@+id/layout_vfx_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
         android:background="#05080E">
 
+        <TextureView
+            android:id="@+id/texture_video_source"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_gravity="center" />
+
         <ImageView
             android:id="@+id/iv_vfx_preview"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:layout_gravity="center"
             android:scaleType="fitCenter" />
 
         <!-- Status Indicator Badge -->

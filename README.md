@@ -39,6 +39,7 @@
   - `GIF Animasi Video` (Cuplikan video bergerak transparan)
 
 ### 3. ⚡ Adobe After Effects Studio Pro (Motion Graphics, Customization & VFX Engine)
+- **🎬 Pemutaran Pratinjau Video Bergerak Real-time (Live Video Playback Engine):** Integrasi pemutar hardware-accelerated **TextureView** dan **MediaPlayer** yang memutar video bergerak halus 30-60 fps lengkap dengan audio sinkron saat preview tombol play ditekan. Dilengkapi arsitektur *double-buffering zero-GC frame compositor* untuk merender efek visual After Effects di atas video yang sedang bergerak secara instan.
 - **⚙️ Kustom Durasi Komposisi (Custom Duration):** Pengaturan durasi komposisi bebas: preset cepat (3s, 5s, 10s, 15s, 30s, 60s) atau input manual hingga 300 detik dengan sinkronisasi langsung pada timeline seekbar dan export rendering.
 - **📐 Kustom Resolusi & Rasio Aspek Layar:** Rasio standar industri: **16:9 Landscape (YouTube)**, **9:16 Vertikal (TikTok/Reels/Shorts)**, **1:1 Persegi (Instagram)**, **4:5 Sinematik Portrait**, dan **21:9 Ultrawide Bioskop**, serta opsi resolusi render hingga **4K UHD (3840x2160)**.
 - **🎛️ Parameter Partikel & Kecepatan Efek Global:**

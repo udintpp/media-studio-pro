@@ -47,16 +47,30 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.5.0
-          name: "MediaStudio Pro v1.5.0 - After Effects Full Customization: Durasi, Rasio, Partikel, Huruf Timbul 3D & Stiker Animasi"
+          tag_name: v1.5.1
+          name: "MediaStudio Pro v1.5.1 - Real-time Hardware Video Playback & VFX Live Preview"
           body: |
-            ## ⚡ MediaStudio Pro v1.5.0 - Customization Engine Adobe After Effects Studio
+            ## ⚡ MediaStudio Pro v1.5.1 - Real-time Hardware Video Playback & Live VFX Preview
 
-            Pembaruan besar **MediaStudio Pro v1.5.0** menghadirkan kustomisasi penuh pada modul **After Effects Studio Pro**, memberikan kontrol tanpa batas atas durasi komposisi, resolusi & rasio layar, parameter simulasi partikel, tipografi huruf timbul 3D, serta stiker animasi interaktif!
+            Pembaruan **MediaStudio Pro v1.5.1** memperbaiki pemutaran pratinjau video di **After Effects Studio Pro**, memastikan gambar video bergerak dan terputar secara *real-time* dan sinkron bersama efek visual (VFX), animasi motion text, dan stiker!
 
             ---
 
-            ### 🚀 Fitur Baru di v1.5.0:
+            ### 🚀 Pembaruan & Perbaikan di v1.5.1:
+
+            1. 🎬 **Pemutaran Video Bergerak Real-time (Live Video Playback Engine):**
+               - Memperbaiki masalah gambar video yang diam/statis saat tombol putar ditekan dan timer waktu berjalan.
+               - Mengintegrasikan **TextureView** dan **MediaPlayer** hardware-accelerated sehingga frame video terputar mulus di 30-60 fps lengkap dengan audio yang sinkron.
+
+            2. ⚡ **Double-Buffering & Zero-GC Frame Compositor:**
+               - Menggunakan arsitektur double-buffering reusable bitmap buffer untuk merender efek visual After Effects di setiap frame video bergerak tanpa lag, tanpa *garbage collection stuttering*, dan tanpa lonjakan RAM.
+
+            3. ⏩ **Timeline Scrubbing & Speed Ramping Sinkron:**
+               - Menggeser seekbar timeline langsung melakukan *hardware seek* ke frame video yang tepat secara instan.
+               - Pengaturan kecepatan video (*Speed Ramping 0.25x - 2.0x*) langsung diterapkan ke pemutar video secara dinamis.
+
+            4. 📐 **Presisi Rasio Aspek Video (Fit-to-Aspect Canvas):**
+               - Menyesuaikan rasio tampilan kontainer video secara otomatis baik untuk video lanskap maupun potret/vertikal (TikTok/Reels).
 
             1. ⚙️ **Kustom Durasi Komposisi (Custom Duration):**
                - Preset cepat: **3s, 5s, 10s, 15s, 30s, 60s**, serta input manual detik bebas hingga 300 detik.

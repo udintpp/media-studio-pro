@@ -44,12 +44,18 @@ object AfterEffectsRenderer {
     fun renderFrame(
         src: Bitmap,
         timeMs: Long,
-        config: AeConfig
+        config: AeConfig,
+        reusableOutput: Bitmap? = null
     ): Bitmap {
         val w = src.width
         val h = src.height
 
-        val output = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        val output = if (reusableOutput != null && !reusableOutput.isRecycled && reusableOutput.width == w && reusableOutput.height == h) {
+            reusableOutput.eraseColor(Color.TRANSPARENT)
+            reusableOutput
+        } else {
+            Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        }
         val canvas = Canvas(output)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
 
