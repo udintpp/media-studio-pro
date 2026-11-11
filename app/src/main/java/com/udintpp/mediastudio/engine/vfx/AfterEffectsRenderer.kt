@@ -1227,7 +1227,7 @@ object AfterEffectsRenderer {
         }
     }
 
-    // --- 9. Motion Graphics Text Engine with 3D Emboss, Custom Fonts & Animations ---
+    // --- 9. Motion Graphics Text Engine with Running Text, Frames, 3D/2D Styles & Typographies ---
     private fun renderMotionText(
         canvas: Canvas,
         w: Int,
@@ -1244,9 +1244,14 @@ object AfterEffectsRenderer {
             alpha = (item.opacity * 255).toInt().coerceIn(0, 255)
             typeface = when (item.fontFamily) {
                 "MONOSPACE" -> Typeface.MONOSPACE
-                "SERIF" -> Typeface.SERIF
-                "SANS_SERIF" -> Typeface.SANS_SERIF
+                "SERIF" -> Typeface.create(Typeface.SERIF, Typeface.BOLD)
+                "SERIF_ITALIC" -> Typeface.create(Typeface.SERIF, Typeface.BOLD_ITALIC)
+                "SANS_SERIF" -> Typeface.create(Typeface.SANS_SERIF, Typeface.NORMAL)
+                "SANS_SERIF_BOLD" -> Typeface.create(Typeface.SANS_SERIF, Typeface.BOLD)
                 "CASUAL" -> Typeface.create("casual", Typeface.BOLD)
+                "CURSIVE" -> Typeface.create("cursive", Typeface.BOLD)
+                "COMIC" -> Typeface.create("sans-serif-black", Typeface.BOLD)
+                "STENCIL" -> Typeface.create("sans-serif-condensed", Typeface.BOLD)
                 else -> Typeface.DEFAULT_BOLD
             }
         }
@@ -1254,14 +1259,59 @@ object AfterEffectsRenderer {
         val px = w * item.x
         val py = h * item.y
         val speedMs = (timeMs * effectSpeed).toLong()
+        val scrollSpeed = item.scrollSpeed.coerceIn(0.2f, 5.0f)
 
         when (item.style) {
+            "SCROLL_LEFT" -> {
+                // Teks Berjalan ke Kiri (TV News Ticker / Crawl)
+                val textWidth = textPaint.measureText(item.text)
+                val totalSpan = w + textWidth + 120f
+                val traveled = ((speedMs * 0.16f * scrollSpeed) % totalSpan)
+                val posX = (w + 60f) - traveled
+                drawStyledTextWithFrame(canvas, posX, py, item.text, textPaint, item, timeMs, w, h)
+            }
+            "SCROLL_RIGHT" -> {
+                // Teks Berjalan ke Kanan (Marquee Right)
+                val textWidth = textPaint.measureText(item.text)
+                val totalSpan = w + textWidth + 120f
+                val traveled = ((speedMs * 0.16f * scrollSpeed) % totalSpan)
+                val posX = (-textWidth - 60f) + traveled
+                drawStyledTextWithFrame(canvas, posX, py, item.text, textPaint, item, timeMs, w, h)
+            }
+            "SCROLL_UP" -> {
+                // Teks Bergulir Naik (Movie End Credits Roll)
+                val lines = item.text.split("\n")
+                val totalTextHeight = lines.size * item.fontSize * 1.35f
+                val totalSpan = h + totalTextHeight + 120f
+                val traveled = ((speedMs * 0.08f * scrollSpeed) % totalSpan)
+                val posY = (h + 60f) - traveled
+                drawStyledTextWithFrame(canvas, px, posY, item.text, textPaint, item, timeMs, w, h)
+            }
+            "SCROLL_DOWN" -> {
+                // Teks Bergulir Turun (Waterfall Down)
+                val lines = item.text.split("\n")
+                val totalTextHeight = lines.size * item.fontSize * 1.35f
+                val totalSpan = h + totalTextHeight + 120f
+                val traveled = ((speedMs * 0.08f * scrollSpeed) % totalSpan)
+                val posY = (-totalTextHeight - 60f) + traveled
+                drawStyledTextWithFrame(canvas, px, posY, item.text, textPaint, item, timeMs, w, h)
+            }
+            "BOUNCE_VERTICAL" -> {
+                // Naik Turun Membal (Floating Up-Down)
+                val bounce = sin((speedMs * 0.005f * scrollSpeed).toDouble()).toFloat() * 26f
+                drawStyledTextWithFrame(canvas, px, py + bounce, item.text, textPaint, item, timeMs, w, h)
+            }
+            "BOUNCE_HORIZONTAL" -> {
+                // Goyang Kiri Kanan (Swaying Left-Right)
+                val sway = sin((speedMs * 0.004f * scrollSpeed).toDouble()).toFloat() * 32f
+                drawStyledTextWithFrame(canvas, px + sway, py, item.text, textPaint, item, timeMs, w, h)
+            }
             "TYPEWRITER" -> {
                 val cycleMs = 3500L
                 val t = (speedMs % cycleMs).toFloat() / cycleMs
                 val charsToShow = (t * item.text.length * 1.3f).toInt().coerceIn(0, item.text.length)
                 val substring = item.text.substring(0, charsToShow)
-                drawEmbossedText(canvas, px, py, substring, textPaint, item, timeMs)
+                drawStyledTextWithFrame(canvas, px, py, substring, textPaint, item, timeMs, w, h)
             }
             "KINETIC_ZOOM" -> {
                 val cycleMs = 1500L
@@ -1276,13 +1326,13 @@ object AfterEffectsRenderer {
                 canvas.save()
                 canvas.translate(px, py)
                 canvas.scale(scale, scale)
-                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item, timeMs)
+                drawStyledTextWithFrame(canvas, 0f, 0f, item.text, textPaint, item, timeMs, w, h)
                 canvas.restore()
             }
             "NEON_PULSE" -> {
                 val pulse = 0.7f + 0.3f * sin((speedMs / 180f).toDouble()).toFloat()
                 textPaint.alpha = (pulse * 255).toInt().coerceIn(80, 255)
-                drawEmbossedText(canvas, px, py, item.text, textPaint, item, timeMs)
+                drawStyledTextWithFrame(canvas, px, py, item.text, textPaint, item, timeMs, w, h)
             }
             "GLITCH" -> {
                 val glitchOffset = if (random.nextInt(10) > 7) (random.nextFloat() - 0.5f) * 16f else 0f
@@ -1293,7 +1343,7 @@ object AfterEffectsRenderer {
                 textPaint.color = Color.parseColor("#06B6D4")
                 canvas.drawText(item.text, 4f, 0f, textPaint)
                 textPaint.color = item.color
-                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item, timeMs)
+                drawStyledTextWithFrame(canvas, 0f, 0f, item.text, textPaint, item, timeMs, w, h)
                 canvas.restore()
             }
             "3D_FLIP" -> {
@@ -1309,14 +1359,14 @@ object AfterEffectsRenderer {
                 canvas.save()
                 canvas.translate(px, py)
                 canvas.concat(mtx)
-                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item, timeMs)
+                drawStyledTextWithFrame(canvas, 0f, 0f, item.text, textPaint, item, timeMs, w, h)
                 canvas.restore()
             }
             "WAVE_BOUNCE" -> {
                 val bounce = sin((speedMs / 130f).toDouble()).toFloat() * 16f
                 canvas.save()
                 canvas.translate(px, py + bounce)
-                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item, timeMs)
+                drawStyledTextWithFrame(canvas, 0f, 0f, item.text, textPaint, item, timeMs, w, h)
                 canvas.restore()
             }
             "FADE_SLIDE" -> {
@@ -1326,57 +1376,279 @@ object AfterEffectsRenderer {
                 textPaint.alpha = ((t.coerceIn(0f, 0.25f) / 0.25f) * 255).toInt()
                 canvas.save()
                 canvas.translate(px, py + slideY)
-                drawEmbossedText(canvas, 0f, 0f, item.text, textPaint, item, timeMs)
+                drawStyledTextWithFrame(canvas, 0f, 0f, item.text, textPaint, item, timeMs, w, h)
                 canvas.restore()
             }
             else -> {
-                drawEmbossedText(canvas, px, py, item.text, textPaint, item, timeMs)
+                drawStyledTextWithFrame(canvas, px, py, item.text, textPaint, item, timeMs, w, h)
             }
         }
     }
 
-    private fun drawEmbossedText(
+    private fun drawStyledTextWithFrame(
         canvas: Canvas,
         x: Float,
         y: Float,
         text: String,
         textPaint: Paint,
         item: AeMotionText,
-        timeMs: Long
+        timeMs: Long,
+        w: Int,
+        h: Int
     ) {
         if (text.isEmpty()) return
 
-        // 1. Efek Huruf Timbul 3D (3D Extrusion Depth / Bevel)
-        if (item.isEmbossEnabled) {
-            val depth = item.embossDepth.coerceIn(1f, 20f)
-            val shadowPaint = Paint(textPaint).apply {
-                color = item.shadowColor
-                style = Paint.Style.FILL
-                clearShadowLayer()
+        val lines = text.split("\n")
+        val lineHeight = item.fontSize * 1.35f
+        var maxLineWidth = 0f
+        for (line in lines) {
+            val lw = textPaint.measureText(line)
+            if (lw > maxLineWidth) maxLineWidth = lw
+        }
+        val totalHeight = lines.size * lineHeight
+
+        // 1. Gambar Template Frame / Bingkai di belakang teks
+        if (item.frameStyle != "NONE") {
+            drawTextFrame(canvas, x, y, maxLineWidth, totalHeight, item, w, h)
+        }
+
+        // 2. Gambar setiap baris teks sesuai Model Gaya Huruf (3D / 2D / Normal)
+        lines.forEachIndexed { index, line ->
+            val lineY = if (lines.size == 1) {
+                y
+            } else {
+                y - (totalHeight / 2f) + (index * lineHeight) + (item.fontSize * 0.85f)
             }
-            for (d in 1..depth.toInt()) {
-                canvas.drawText(text, x + d, y + d, shadowPaint)
+            drawSingleTextLine(canvas, x, lineY, line, textPaint, item, timeMs)
+        }
+    }
+
+    private fun drawTextFrame(
+        canvas: Canvas,
+        x: Float,
+        y: Float,
+        textWidth: Float,
+        textHeight: Float,
+        item: AeMotionText,
+        w: Int,
+        h: Int
+    ) {
+        val padH = item.framePaddingH
+        val padV = item.framePaddingV
+        val left = x - (textWidth / 2f) - padH
+        val top = y - textHeight * 0.85f - padV
+        val right = x + (textWidth / 2f) + padH
+        val bottom = y + textHeight * 0.25f + padV
+        val frameRect = RectF(left, top, right, bottom)
+
+        val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            color = if (item.frameBgColor != Color.TRANSPARENT) item.frameBgColor else Color.argb(190, 15, 23, 42)
+            alpha = (item.frameOpacity * 255).toInt().coerceIn(0, 255)
+        }
+
+        val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = item.frameBorderWidth.coerceAtLeast(1.5f)
+            color = if (item.frameBorderColor != Color.TRANSPARENT) item.frameBorderColor else Color.WHITE
+        }
+
+        when (item.frameStyle) {
+            "ROUNDED_BOX" -> {
+                canvas.drawRoundRect(frameRect, item.frameCornerRadius, item.frameCornerRadius, bgPaint)
+                if (item.frameBorderWidth > 0f) {
+                    canvas.drawRoundRect(frameRect, item.frameCornerRadius, item.frameCornerRadius, borderPaint)
+                }
+            }
+            "FULL_BANNER" -> {
+                // Running Text Ticker Bar memanjang penuh dari kiri ke kanan layar
+                val bannerRect = RectF(0f, top, w.toFloat(), bottom)
+                canvas.drawRect(bannerRect, bgPaint)
+                borderPaint.strokeWidth = 2.5f
+                canvas.drawLine(0f, top, w.toFloat(), top, borderPaint)
+                canvas.drawLine(0f, bottom, w.toFloat(), bottom, borderPaint)
+            }
+            "NEON_GLOW_BORDER" -> {
+                canvas.drawRoundRect(frameRect, 16f, 16f, bgPaint)
+                borderPaint.setShadowLayer(16f, 0f, 0f, borderPaint.color)
+                canvas.drawRoundRect(frameRect, 16f, 16f, borderPaint)
+            }
+            "CYBERPUNK_CORNERS" -> {
+                canvas.drawRect(frameRect, bgPaint)
+                val arm = (item.fontSize * 0.45f).coerceAtLeast(14f)
+                borderPaint.strokeWidth = 3.5f
+                // Top-Left
+                canvas.drawLine(left, top, left + arm, top, borderPaint)
+                canvas.drawLine(left, top, left, top + arm, borderPaint)
+                // Top-Right
+                canvas.drawLine(right - arm, top, right, top, borderPaint)
+                canvas.drawLine(right, top, right, top + arm, borderPaint)
+                // Bottom-Left
+                canvas.drawLine(left, bottom, left + arm, bottom, borderPaint)
+                canvas.drawLine(left, bottom - arm, left, bottom, borderPaint)
+                // Bottom-Right
+                canvas.drawLine(right - arm, bottom, right, bottom, borderPaint)
+                canvas.drawLine(right, bottom - arm, right, bottom, borderPaint)
+            }
+            "CINEMATIC_LETTERBOX" -> {
+                bgPaint.color = Color.argb(220, 0, 0, 0)
+                canvas.drawRect(frameRect, bgPaint)
+                borderPaint.strokeWidth = 2f
+                canvas.drawLine(left, top, right, top, borderPaint)
+                canvas.drawLine(left, bottom, right, bottom, borderPaint)
+            }
+            "DOUBLE_BORDER_STAMP" -> {
+                canvas.drawRoundRect(frameRect, 8f, 8f, bgPaint)
+                canvas.drawRoundRect(frameRect, 8f, 8f, borderPaint)
+                val innerRect = RectF(left + 6f, top + 6f, right - 6f, bottom - 6f)
+                borderPaint.strokeWidth = 1.5f
+                canvas.drawRoundRect(innerRect, 6f, 6f, borderPaint)
+            }
+            "ANGLED_RIBBON" -> {
+                val slant = 22f
+                val path = Path().apply {
+                    moveTo(left - slant, bottom)
+                    lineTo(left, top)
+                    lineTo(right + slant, top)
+                    lineTo(right, bottom)
+                    close()
+                }
+                canvas.drawPath(path, bgPaint)
+                if (item.frameBorderWidth > 0f) {
+                    canvas.drawPath(path, borderPaint)
+                }
+            }
+            "GRADIENT_GLASS" -> {
+                val glassPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                    shader = LinearGradient(
+                        left, top, right, bottom,
+                        intArrayOf(Color.argb(90, 255, 255, 255), Color.argb(25, 255, 255, 255)),
+                        null,
+                        Shader.TileMode.CLAMP
+                    )
+                }
+                canvas.drawRoundRect(frameRect, 18f, 18f, glassPaint)
+                borderPaint.color = Color.argb(140, 255, 255, 255)
+                borderPaint.strokeWidth = 1.5f
+                canvas.drawRoundRect(frameRect, 18f, 18f, borderPaint)
+            }
+        }
+    }
+
+    private fun drawSingleTextLine(
+        canvas: Canvas,
+        x: Float,
+        y: Float,
+        line: String,
+        textPaint: Paint,
+        item: AeMotionText,
+        timeMs: Long
+    ) {
+        if (line.isEmpty()) return
+
+        when (item.textRenderMode) {
+            "3D_ISOMETRIC" -> {
+                val depth = item.embossDepth.coerceIn(2f, 25f)
+                val shadowPaint = Paint(textPaint).apply {
+                    color = item.shadowColor
+                    style = Paint.Style.FILL
+                    clearShadowLayer()
+                }
+                for (d in 1..depth.toInt()) {
+                    canvas.drawText(line, x - d * 0.8f, y + d * 1.2f, shadowPaint)
+                }
+                if (item.strokeWidth > 0f) {
+                    val strokePaint = Paint(textPaint).apply {
+                        style = Paint.Style.STROKE
+                        strokeWidth = item.strokeWidth
+                        color = item.strokeColor
+                        clearShadowLayer()
+                    }
+                    canvas.drawText(line, x, y, strokePaint)
+                }
+                textPaint.setShadowLayer(item.shadowRadius, 0f, 0f, item.glowColor)
+                canvas.drawText(line, x, y, textPaint)
+            }
+            "2D_FLAT" -> {
+                textPaint.clearShadowLayer()
+                if (item.strokeWidth > 0f) {
+                    val strokePaint = Paint(textPaint).apply {
+                        style = Paint.Style.STROKE
+                        strokeWidth = item.strokeWidth
+                        color = item.strokeColor
+                        clearShadowLayer()
+                    }
+                    canvas.drawText(line, x, y, strokePaint)
+                }
+                canvas.drawText(line, x, y, textPaint)
+            }
+            "2D_OUTLINE" -> {
+                val strokePaint = Paint(textPaint).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = item.strokeWidth.coerceAtLeast(3.5f)
+                    color = item.color
+                    clearShadowLayer()
+                }
+                canvas.drawText(line, x, y, strokePaint)
+            }
+            "2D_DUAL_TONE" -> {
+                val shadowPaint = Paint(textPaint).apply {
+                    color = item.shadowColor
+                    style = Paint.Style.FILL
+                    clearShadowLayer()
+                }
+                canvas.drawText(line, x + 6f, y + 6f, shadowPaint)
+                val strokePaint = Paint(textPaint).apply {
+                    style = Paint.Style.STROKE
+                    strokeWidth = (item.strokeWidth * 1.8f).coerceAtLeast(4.5f)
+                    color = item.strokeColor
+                    clearShadowLayer()
+                }
+                canvas.drawText(line, x, y, strokePaint)
+                canvas.drawText(line, x, y, textPaint)
+            }
+            "2D_SOFT_SHADOW" -> {
+                textPaint.setShadowLayer(16f, 0f, 8f, Color.argb(160, 0, 0, 0))
+                canvas.drawText(line, x, y, textPaint)
+            }
+            else -> {
+                // "3D_EMBOSS" (Default)
+                if (item.isEmbossEnabled) {
+                    val depth = item.embossDepth.coerceIn(1f, 20f)
+                    val shadowPaint = Paint(textPaint).apply {
+                        color = item.shadowColor
+                        style = Paint.Style.FILL
+                        clearShadowLayer()
+                    }
+                    for (d in 1..depth.toInt()) {
+                        canvas.drawText(line, x + d, y + d, shadowPaint)
+                    }
+                    val highlightPaint = Paint(textPaint).apply {
+                        color = Color.argb(100, 255, 255, 255)
+                        style = Paint.Style.FILL
+                        clearShadowLayer()
+                    }
+                    canvas.drawText(line, x - 1.5f, y - 1.5f, highlightPaint)
+                }
+
+                if (item.strokeWidth > 0f) {
+                    val strokePaint = Paint(textPaint).apply {
+                        style = Paint.Style.STROKE
+                        strokeWidth = item.strokeWidth
+                        color = item.strokeColor
+                        clearShadowLayer()
+                    }
+                    canvas.drawText(line, x, y, strokePaint)
+                }
+
+                textPaint.setShadowLayer(item.shadowRadius, 0f, 0f, item.glowColor)
+                canvas.drawText(line, x, y, textPaint)
             }
         }
 
-        // 2. Stroke / Border garis luar teks
-        if (item.strokeWidth > 0f) {
-            val strokePaint = Paint(textPaint).apply {
-                style = Paint.Style.STROKE
-                strokeWidth = item.strokeWidth
-                color = item.strokeColor
-                clearShadowLayer()
-            }
-            canvas.drawText(text, x, y, strokePaint)
-        }
-
-        // 3. Main face text dengan outer neon glow
-        textPaint.setShadowLayer(item.shadowRadius, 0f, 0f, item.glowColor)
-        canvas.drawText(text, x, y, textPaint)
-
-        // 4. Shimmer / Metallic Sheen sweep melintasi teks
+        // Shimmer / Metallic Sheen sweep melintasi teks
         if (item.isShimmerEnabled) {
-            val textWidth = textPaint.measureText(text)
+            val textWidth = textPaint.measureText(line)
             val cycle = 1800L
             val speed = item.shimmerSpeed.coerceAtLeast(0.1f)
             val t = ((timeMs * speed) % cycle).toFloat() / cycle
@@ -1408,28 +1680,25 @@ object AfterEffectsRenderer {
                 y + item.fontSize * 0.8f
             )
             canvas.saveLayer(textBounds, null)
-            canvas.drawText(text, x, y, textPaint)
-            canvas.drawText(text, x, y, shimmerPaint)
+            canvas.drawText(line, x, y, textPaint)
+            canvas.drawText(line, x, y, shimmerPaint)
             canvas.restore()
         }
 
-        // 5. Star Glint Sparkles (Kilau Bintang 4-Sudut di Sudut Huruf)
+        // Star Glint Sparkles (Kilau Bintang 4-Sudut di Sudut Huruf)
         if (item.isStarGlintEnabled) {
-            val textWidth = textPaint.measureText(text)
+            val textWidth = textPaint.measureText(line)
             val leftX = x - (textWidth * 0.48f)
             val topY = y - (item.fontSize * 0.75f)
 
-            // Corner 1: Awal kata
             val phase1 = (sin((timeMs * 0.006f) + 0f) * 0.5f + 0.5f)
             val rot1 = (timeMs * 0.08f) % 360f
             drawStarGlint(canvas, leftX + 8f, topY + 4f, 8f * phase1, item.starGlintColor, (phase1 * 255).toInt(), rot1)
 
-            // Corner 2: Akhir kata
             val phase2 = (sin((timeMs * 0.006f) + 2.2f) * 0.5f + 0.5f)
             val rot2 = (timeMs * -0.06f + 45f) % 360f
             drawStarGlint(canvas, leftX + textWidth - 8f, topY + 2f, 7.5f * phase2, item.starGlintColor, (phase2 * 255).toInt(), rot2)
 
-            // Corner 3: Tengah atas
             val phase3 = (sin((timeMs * 0.007f) + 4.4f) * 0.5f + 0.5f)
             val rot3 = (timeMs * 0.1f + 90f) % 360f
             drawStarGlint(canvas, x, topY - 3f, 6.5f * phase3, item.starGlintColor, (phase3 * 255).toInt(), rot3)

@@ -229,13 +229,13 @@ data class AeKeyframe(
 data class AeMotionText(
     val id: String = java.util.UUID.randomUUID().toString(),
     var text: String = "AFTER EFFECTS TITLE",
-    var style: String = "TYPEWRITER", // "TYPEWRITER", "KINETIC_ZOOM", "NEON_PULSE", "GLITCH", "FADE_SLIDE", "3D_FLIP", "WAVE_BOUNCE"
+    var style: String = "TYPEWRITER", // "TYPEWRITER", "KINETIC_ZOOM", "NEON_PULSE", "GLITCH", "FADE_SLIDE", "3D_FLIP", "WAVE_BOUNCE", "SCROLL_LEFT", "SCROLL_RIGHT", "SCROLL_UP", "SCROLL_DOWN", "BOUNCE_VERTICAL", "BOUNCE_HORIZONTAL"
     var color: Int = Color.WHITE,
     var glowColor: Int = Color.parseColor("#06B6D4"),
     var fontSize: Float = 44f,
     var x: Float = 0.5f,
     var y: Float = 0.5f,
-    var fontFamily: String = "DEFAULT_BOLD", // "DEFAULT_BOLD", "MONOSPACE", "SERIF", "SANS_SERIF", "CASUAL"
+    var fontFamily: String = "DEFAULT_BOLD", // "DEFAULT_BOLD", "MONOSPACE", "SERIF", "SERIF_ITALIC", "SANS_SERIF", "SANS_SERIF_BOLD", "CASUAL", "CURSIVE", "COMIC", "STENCIL"
     var isEmbossEnabled: Boolean = true, // Efek huruf timbul 3D
     var embossDepth: Float = 4f,
     var strokeColor: Int = Color.BLACK,
@@ -249,7 +249,21 @@ data class AeMotionText(
     var shimmerSpeed: Float = 1.0f,
     // Star Glint Sparkles (Kilau Bintang 4-Sudut di Sudut Huruf)
     var isStarGlintEnabled: Boolean = false,
-    var starGlintColor: Int = Color.parseColor("#FFD700")
+    var starGlintColor: Int = Color.parseColor("#FFD700"),
+    // Teks Berjalan & Kecepatan Gerak
+    var scrollSpeed: Float = 1.0f,
+    // Model Gaya Huruf (3D / 2D / Normal / Outline)
+    var textRenderMode: String = "3D_EMBOSS", // "3D_EMBOSS", "3D_ISOMETRIC", "2D_FLAT", "2D_OUTLINE", "2D_DUAL_TONE", "2D_SOFT_SHADOW"
+    var fontStyleType: String = "NORMAL", // "NORMAL", "DECORATIVE", "3D_BLOCK", "2D_MINIMAL"
+    // Model & Bentuk Template Frame / Bingkai Teks
+    var frameStyle: String = "NONE", // "NONE", "ROUNDED_BOX", "FULL_BANNER", "NEON_GLOW_BORDER", "CYBERPUNK_CORNERS", "CINEMATIC_LETTERBOX", "DOUBLE_BORDER_STAMP", "ANGLED_RIBBON", "GRADIENT_GLASS"
+    var frameBgColor: Int = Color.TRANSPARENT,
+    var frameBorderColor: Int = Color.TRANSPARENT,
+    var frameBorderWidth: Float = 3f,
+    var frameCornerRadius: Float = 16f,
+    var framePaddingH: Float = 28f,
+    var framePaddingV: Float = 14f,
+    var frameOpacity: Float = 0.85f
 )
 
 data class AeSticker(

@@ -47,12 +47,12 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.5.6
-          name: "MediaStudio Pro v1.5.6 - Menumpuk Video/Foto (PIP Overlay), Skala, Intensitas, Durasi & 9 Mode Transisi"
+          tag_name: v1.5.7
+          name: "MediaStudio Pro v1.5.7 - Teks Berjalan, Template Frame, 3D/2D Tipografi & 9 Template Desain Siap Pakai"
           body: |
-            ## 🖼️ MediaStudio Pro v1.5.6 - Video & Photo Overlay (PIP), Scale, Intensity, Duration & 9 Transition Modes
+            ## 🔤 MediaStudio Pro v1.5.7 - Running Text, Frames, Tipografi 3D/2D & Templates
 
-            Pembaruan **v1.5.6** menghadirkan fitur **Menumpuk Video atau Foto (Media Overlay / PIP Track)** lengkap dengan kustomisasi skala ukuran, intensitas/opasitas, batas durasi awal & akhir, serta 9 pilihan mode transisi masuk & keluar:
+            Pembaruan **v1.5.7** menghadirkan fitur **Teks & Animasi Berjalan** yang sangat lengkap:
 
             ---
 

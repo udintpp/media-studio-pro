@@ -589,6 +589,10 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             showMotionTextDialog()
         }
 
+        binding.btnVfxTextTemplate.setOnClickListener {
+            showTextPresetTemplatesDialog()
+        }
+
         binding.btnVfxAudioSpectrum.setOnClickListener {
             aeConfig.isAudioSpectrumEnabled = !aeConfig.isAudioSpectrumEnabled
             binding.btnVfxAudioSpectrum.text = if (aeConfig.isAudioSpectrumEnabled) "🎵 Waveform: ON" else "🎵 Audio Waveform"
@@ -729,6 +733,9 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         ).count { it }
         binding.tvActiveVfxBadge.text = "⚡ AE Engine: $activeCount Efek Aktif"
         binding.btnVfxOverlay.text = if (aeConfig.mediaOverlays.isNotEmpty()) "🖼️ Tumpuk (${aeConfig.mediaOverlays.size})" else "🖼️ Tumpuk Video/Foto"
+        val activeText = aeConfig.motionTexts.lastOrNull()
+        binding.btnVfxMotionText.text = if (activeText != null) "🔤 Teks: ${activeText.style}" else "🔤 Teks & Gerak"
+        binding.btnVfxTextStyle.text = if (activeText != null && activeText.frameStyle != "NONE") "✨ Frame: ${activeText.frameStyle}" else "✨ Gaya, 3D/2D & Frame"
     }
 
     private fun updateKeyframeCount() {
@@ -895,51 +902,176 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
 
     private fun showMotionTextDialog() {
         activeDragTarget = DragTarget.MOTION_TEXT
-        val styles = arrayOf(
-            "Mengetik (Typewriter)",
-            "Kinetic Zoom Pop",
-            "Neon Pulse Glow",
-            "Cyberpunk Glitch",
-            "3D Space Flip",
-            "Wave Bounce (Gelombang Pantul)",
-            "Fade & Slide (Muncul Meluncur)"
-        )
-        val styleCodes = arrayOf("TYPEWRITER", "KINETIC_ZOOM", "NEON_PULSE", "GLITCH", "3D_FLIP", "WAVE_BOUNCE", "FADE_SLIDE")
+        val current = aeConfig.motionTexts.lastOrNull()
+        val textPreview = if (current != null) "\"${current.text.take(18)}${if (current.text.length > 18) "..." else ""}\"" else "(Belum Ada)"
+        val currentStyle = current?.style ?: "TYPEWRITER"
+        val currentSpeed = "${current?.scrollSpeed ?: 1.0f}x"
+        val currentSize = "${current?.fontSize?.toInt() ?: 44}sp"
 
-        val currentText = aeConfig.motionTexts.lastOrNull()?.text ?: "AFTER EFFECTS PRO"
-        val input = EditText(this).apply {
-            hint = "Tulis judul After Effects..."
-            setText(currentText)
-        }
+        val menuItems = arrayOf(
+            "📝 Tulis / Ubah Teks: $textPreview",
+            "🎬 Mode Animasi Gerak: $currentStyle",
+            "⚡ Kecepatan Berjalan / Gerak: $currentSpeed",
+            "📏 Ukuran Font: $currentSize",
+            "📍 Atur Posisi Teks Preset (Bawah Ticker, Tengah, Atas)",
+            "📋 Buka Template Teks Siap Pakai",
+            "✨ Kustomisasi Gaya, 3D/2D & Frame Teks",
+            "🗑️ Hapus Teks Aktif"
+        )
 
         AlertDialog.Builder(this)
-            .setTitle("Tambah / Ubah Motion Graphics Text")
-            .setView(input)
-            .setItems(styles) { _, which ->
-                val txt = input.text.toString().ifBlank { "AFTER EFFECTS" }
-                val existing = aeConfig.motionTexts.lastOrNull()
-                if (existing != null) {
-                    existing.text = txt
-                    existing.style = styleCodes[which]
-                } else {
-                    aeConfig.motionTexts.add(
-                        AeMotionText(
-                            text = txt,
-                            style = styleCodes[which],
-                            color = Color.WHITE,
-                            glowColor = Color.parseColor("#06B6D4")
-                        )
+            .setTitle("🔤 Teks, Gerak & Teks Berjalan")
+            .setItems(menuItems) { _, which ->
+                val target = aeConfig.motionTexts.lastOrNull() ?: run {
+                    val newText = AeMotionText(
+                        text = "BREAKING NEWS LIVE UPDATE",
+                        style = "SCROLL_LEFT",
+                        color = Color.WHITE,
+                        glowColor = Color.parseColor("#06B6D4")
                     )
+                    aeConfig.motionTexts.add(newText)
+                    newText
                 }
-                binding.btnVfxMotionText.text = "🔤 Motion: ${styleCodes[which]}"
-                Toast.makeText(this, "Motion text: ${styleCodes[which]}. Geser jari di preview untuk reposisi!", Toast.LENGTH_SHORT).show()
+
+                when (which) {
+                    0 -> showEditTextInputDialog(target)
+                    1 -> showTextMotionModesDialog(target)
+                    2 -> showTextSpeedDialog(target)
+                    3 -> showTextFontSizeDialog(target)
+                    4 -> showTextPositionsDialog(target)
+                    5 -> showTextPresetTemplatesDialog()
+                    6 -> showTextStyleDialog()
+                    7 -> {
+                        aeConfig.motionTexts.clear()
+                        Toast.makeText(this, "Teks telah dihapus", Toast.LENGTH_SHORT).show()
+                        updateBadge()
+                        updatePreview()
+                    }
+                }
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showEditTextInputDialog(target: AeMotionText) {
+        val input = EditText(this).apply {
+            hint = "Ketik judul atau teks berjalan (bisa multi-baris)..."
+            setText(target.text)
+            inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_MULTI_LINE
+            minLines = 2
+        }
+        AlertDialog.Builder(this)
+            .setTitle("📝 Ubah Teks")
+            .setView(input)
+            .setPositiveButton("Simpan") { _, _ ->
+                val str = input.text.toString().trim()
+                target.text = if (str.isNotEmpty()) str else "AFTER EFFECTS"
+                Toast.makeText(this, "Teks berhasil disimpan!", Toast.LENGTH_SHORT).show()
                 updateBadge()
                 updatePreview()
             }
-            .setNegativeButton("Hapus Text") { _, _ ->
-                aeConfig.motionTexts.clear()
-                binding.btnVfxMotionText.text = "🔤 Motion Text"
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showTextMotionModesDialog(target: AeMotionText) {
+        val styles = arrayOf(
+            "⬅️ Teks Berjalan ke Kiri (Running Text / TV Ticker Crawl)",
+            "➡️ Teks Berjalan ke Kanan (Marquee Right)",
+            "⬆️ Teks Bergulir Naik (Movie End Credits Roll)",
+            "⬇️ Teks Bergulir Turun (Waterfall Down)",
+            "↕️ Naik Turun Membal (Bounce Up-Down Floating)",
+            "↔️ Goyang Kiri Kanan (Swaying Left-Right)",
+            "⌨️ Mengetik Satu per Satu (Typewriter)",
+            "💥 Kinetic Zoom Pop (Membesar Dinamis)",
+            "💡 Neon Pulse Glow (Denyut Cahaya Neon)",
+            "⚡ Cyberpunk RGB Glitch (Gangguan Sinyal)",
+            "🔄 3D Space Flip (Pembalikan Ruang 3D)",
+            "🌊 Wave Bounce (Gelombang Ombak Mengambang)",
+            "🌫️ Fade & Slide (Muncul Halus Meluncur)"
+        )
+        val styleCodes = arrayOf(
+            "SCROLL_LEFT", "SCROLL_RIGHT", "SCROLL_UP", "SCROLL_DOWN",
+            "BOUNCE_VERTICAL", "BOUNCE_HORIZONTAL", "TYPEWRITER",
+            "KINETIC_ZOOM", "NEON_PULSE", "GLITCH", "3D_FLIP",
+            "WAVE_BOUNCE", "FADE_SLIDE"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("🎬 Pilih Mode Animasi Gerak Teks")
+            .setItems(styles) { _, idx ->
+                target.style = styleCodes[idx]
+                if (styleCodes[idx] == "SCROLL_LEFT" && target.y == 0.5f) {
+                    target.y = 0.88f // Geser ke bawah layar otomatis seperti TV news
+                }
+                Toast.makeText(this, "Mode gerak: ${styles[idx]}", Toast.LENGTH_SHORT).show()
                 updateBadge()
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextSpeedDialog(target: AeMotionText) {
+        val speeds = arrayOf(
+            "0.5x - Sangat Lambat / Tenang",
+            "0.8x - Lambat Sinematik",
+            "1.0x - Standar Normal",
+            "1.5x - Cepat Berita TV",
+            "2.0x - Sangat Cepat",
+            "3.0x - Kilat Ekstrim"
+        )
+        val speedVals = floatArrayOf(0.5f, 0.8f, 1.0f, 1.5f, 2.0f, 3.0f)
+        AlertDialog.Builder(this)
+            .setTitle("⚡ Kecepatan Berjalan / Animasi")
+            .setItems(speeds) { _, idx ->
+                target.scrollSpeed = speedVals[idx]
+                Toast.makeText(this, "Kecepatan diatur: ${speedVals[idx]}x", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextFontSizeDialog(target: AeMotionText) {
+        val sizes = arrayOf(
+            "24sp (Kecil Subtitle)",
+            "32sp (Sedang)",
+            "42sp (Standar Ticker Berita)",
+            "52sp (Judul Header)",
+            "64sp (Besar Sinematik)",
+            "80sp (Ekstra Besar)",
+            "110sp (Maksimal Layar Penuh)"
+        )
+        val sizeVals = floatArrayOf(24f, 32f, 42f, 52f, 64f, 80f, 110f)
+        AlertDialog.Builder(this)
+            .setTitle("📏 Ukuran Huruf (Font Size)")
+            .setItems(sizes) { _, idx ->
+                target.fontSize = sizeVals[idx]
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextPositionsDialog(target: AeMotionText) {
+        val positions = arrayOf(
+            "📺 Bawah Layar (Running News Ticker - y: 88%)",
+            "🎯 Tengah Layar (Center Title - y: 50%)",
+            "🔝 Atas Layar (Top Header - y: 15%)",
+            "⬅️ Kiri Tengah (Left - x: 25%)",
+            "➡️ Kanan Tengah (Right - x: 75%)",
+            "📌 Bawah Tengah (Lower Third - y: 78%)"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("📍 Atur Posisi Preset Teks")
+            .setItems(positions) { _, idx ->
+                when (idx) {
+                    0 -> { target.x = 0.5f; target.y = 0.88f }
+                    1 -> { target.x = 0.5f; target.y = 0.50f }
+                    2 -> { target.x = 0.5f; target.y = 0.15f }
+                    3 -> { target.x = 0.25f; target.y = 0.50f }
+                    4 -> { target.x = 0.75f; target.y = 0.50f }
+                    5 -> { target.x = 0.5f; target.y = 0.78f }
+                }
+                Toast.makeText(this, "Posisi diatur: ${positions[idx]}. Geser jari di preview untuk posisi bebas!", Toast.LENGTH_SHORT).show()
                 updatePreview()
             }
             .show()
@@ -1225,187 +1357,519 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
 
     private fun showTextStyleDialog() {
         activeDragTarget = DragTarget.MOTION_TEXT
-        val currentText = aeConfig.motionTexts.lastOrNull()
-        val embossStatus = if (currentText?.isEmbossEnabled == true) "ON (Aktif)" else "OFF"
-        val shimmerStatus = if (currentText?.isShimmerEnabled == true) "ON (Aktif)" else "OFF"
-        val starGlintStatus = if (currentText?.isStarGlintEnabled == true) "ON (Aktif)" else "OFF"
+        val target = aeConfig.motionTexts.lastOrNull() ?: run {
+            val newText = AeMotionText(text = "AFTER EFFECTS PRO", color = Color.parseColor("#FFD700"))
+            aeConfig.motionTexts.add(newText)
+            newText
+        }
+
+        val frameStatus = when (target.frameStyle) {
+            "FULL_BANNER" -> "Pita Penuh TV Ticker"
+            "ROUNDED_BOX" -> "Kotak Membulat (Badge)"
+            "NEON_GLOW_BORDER" -> "Neon Glow Border"
+            "CYBERPUNK_CORNERS" -> "Cyberpunk Siku [ ]"
+            "CINEMATIC_LETTERBOX" -> "Cinematic Letterbox"
+            "DOUBLE_BORDER_STAMP" -> "Double Stamp Retro"
+            "ANGLED_RIBBON" -> "Pita Miring (Ribbon)"
+            "GRADIENT_GLASS" -> "Glassmorphism Kaca"
+            else -> "Tanpa Frame (None)"
+        }
+
+        val renderModeStatus = when (target.textRenderMode) {
+            "3D_ISOMETRIC" -> "3D Isometrik"
+            "2D_FLAT" -> "2D Flat Modern"
+            "2D_OUTLINE" -> "2D Hollow Outline"
+            "2D_DUAL_TONE" -> "2D Dual-Tone Komik"
+            "2D_SOFT_SHADOW" -> "2D Soft Shadow"
+            else -> "3D Timbul (Emboss Bevel)"
+        }
+
+        val shimmerStatus = if (target.isShimmerEnabled) "ON" else "OFF"
+        val starGlintStatus = if (target.isStarGlintEnabled) "ON" else "OFF"
 
         val options = arrayOf(
-            "🧊 Huruf Timbul 3D (Bevel & Extrusion): $embossStatus",
-            "📐 Kedalaman Timbul 3D (${currentText?.embossDepth?.toInt() ?: 4}px)",
-            "🔤 Pilihan Font Typography (${currentText?.fontFamily ?: "DEFAULT_BOLD"})",
-            "🎨 Pilihan Warna Huruf (Lengkap dengan Emas 24K, Rose Gold, dll)",
-            "✨ Kilauan Cahaya Sapuan Teks (Shimmer Metallic Sweep): $shimmerStatus",
-            "🎨 Warna Kilauan Sapuan Teks (Emas, Perak, Cyan, Pelangi)",
-            "⚡ Kecepatan Sapuan Kilau Teks (${currentText?.shimmerSpeed ?: 1.0f}x)",
-            "⭐ Kilauan Bintang di Sudut Teks (Star Glint Sparkles): $starGlintStatus",
-            "🎨 Warna Bintang Kilau di Teks",
-            "📏 Ukuran Font Text (${currentText?.fontSize?.toInt() ?: 44}sp)",
-            "📍 Atur Posisi Text Preset",
-            "💡 Info: Sentuh & Geser jari di layar preview untuk posisi bebas"
+            "🖼️ Bentuk & Model Template Frame: $frameStatus",
+            "🎨 Warna Background Frame",
+            "✏️ Warna Garis Border Frame",
+            "🧊 Model Gaya Huruf (3D / 2D / Normal): $renderModeStatus",
+            "🔤 Pilihan Tipe Font & Tipografi (${target.fontFamily})",
+            "🎨 Pilihan Warna Huruf Teks",
+            "📐 Kedalaman Timbul 3D (${target.embossDepth.toInt()}px)",
+            "✨ Kilauan Sapuan Cahaya (Shimmer): $shimmerStatus",
+            "🎨 Warna Kilauan Sapuan Teks",
+            "⚡ Kecepatan Kilauan Sapuan (${target.shimmerSpeed}x)",
+            "⭐ Bintang Kilau di Sudut Teks (Star Glints): $starGlintStatus",
+            "🎨 Warna Bintang Kilau",
+            "📏 Ukuran Font Teks (${target.fontSize.toInt()}sp)",
+            "📍 Posisi Preset Teks",
+            "📋 Buka Template Teks Siap Pakai"
         )
 
         AlertDialog.Builder(this)
-            .setTitle("✨ Kustomisasi Teks, Huruf Timbul & Kilauan")
+            .setTitle("✨ Gaya Teks, Model 3D/2D & Frame")
             .setItems(options) { _, which ->
-                val target = aeConfig.motionTexts.lastOrNull() ?: run {
-                    val newText = AeMotionText(text = "AFTER EFFECTS PRO", color = Color.parseColor("#FFD700"))
-                    aeConfig.motionTexts.add(newText)
-                    newText
-                }
-
                 when (which) {
-                    0 -> {
-                        target.isEmbossEnabled = !target.isEmbossEnabled
-                        Toast.makeText(this, if (target.isEmbossEnabled) "Huruf Timbul 3D: ON" else "Huruf Timbul 3D: OFF", Toast.LENGTH_SHORT).show()
-                        updateBadge()
-                        updatePreview()
-                    }
-                    1 -> {
-                        val depths = arrayOf("Halus (3px)", "Sedang (6px)", "Tebal Sinematik (12px)", "Ekstrim 3D Bevel (20px)")
-                        val depthVals = floatArrayOf(3f, 6f, 12f, 20f)
-                        AlertDialog.Builder(this)
-                            .setTitle("Kedalaman Timbul 3D")
-                            .setItems(depths) { _, dIdx ->
-                                target.embossDepth = depthVals[dIdx]
-                                target.isEmbossEnabled = true
-                                updatePreview()
-                            }
-                            .show()
-                    }
-                    2 -> {
-                        val fontNames = arrayOf("Sans-Serif Bold (Modern)", "Monospace (Hacker/Cyber)", "Serif (Sinematik/Klasik)", "Casual (Tulisan Tangan)", "Default Bold")
-                        val fontCodes = arrayOf("SANS_SERIF", "MONOSPACE", "SERIF", "CASUAL", "DEFAULT_BOLD")
-                        AlertDialog.Builder(this)
-                            .setTitle("Pilih Font Typography")
-                            .setItems(fontNames) { _, fIdx ->
-                                target.fontFamily = fontCodes[fIdx]
-                                Toast.makeText(this, "Font diubah: ${fontNames[fIdx]}", Toast.LENGTH_SHORT).show()
-                                updatePreview()
-                            }
-                            .show()
-                    }
-                    3 -> {
-                        val colorNames = arrayOf(
-                            "👑 Emas Murni 24K (Pure Gold #FFD700)",
-                            "🌹 Rose Gold Mewah (#B76E79)",
-                            "🥂 Champagne Gold Sinematik (#F7E7CE)",
-                            "🥉 Bronze Metalik (#CD7F32)",
-                            "✨ Emas Kuning Cerah (#FBBF24)",
-                            "🤍 Putih Murni (#FFFFFF)",
-                            "💎 Cyan Berlian Neon (#06B6D4)",
-                            "💖 Pink Magenta Glamor (#EC4899)",
-                            "💚 Hijau Limau Neon (#84CC16)",
-                            "🔴 Merah Crimson (#EF4444)",
-                            "💜 Ungu Amethyst (#A855F7)",
-                            "🖤 Hitam Onyx (#0F172A)"
-                        )
-                        val colorVals = intArrayOf(
-                            Color.parseColor("#FFD700"),
-                            Color.parseColor("#B76E79"),
-                            Color.parseColor("#F7E7CE"),
-                            Color.parseColor("#CD7F32"),
-                            Color.parseColor("#FBBF24"),
-                            Color.WHITE,
-                            Color.parseColor("#06B6D4"),
-                            Color.parseColor("#EC4899"),
-                            Color.parseColor("#84CC16"),
-                            Color.parseColor("#EF4444"),
-                            Color.parseColor("#A855F7"),
-                            Color.parseColor("#0F172A")
-                        )
-                        AlertDialog.Builder(this)
-                            .setTitle("Pilih Warna Huruf")
-                            .setItems(colorNames) { _, cIdx ->
-                                target.color = colorVals[cIdx]
-                                Toast.makeText(this, "Warna huruf: ${colorNames[cIdx]}", Toast.LENGTH_SHORT).show()
-                                updatePreview()
-                            }
-                            .show()
-                    }
-                    4 -> {
-                        target.isShimmerEnabled = !target.isShimmerEnabled
-                        Toast.makeText(this, if (target.isShimmerEnabled) "Kilauan Sapuan Teks: ON" else "Kilauan Sapuan: OFF", Toast.LENGTH_SHORT).show()
-                        updatePreview()
-                    }
-                    5 -> {
-                        val shimmerNames = arrayOf("Emas Murni (#FFD700)", "Perak Berlian (#E2E8F0)", "Cyan Neon (#06B6D4)", "Pink Rose (#EC4899)", "Amber Warm (#F59E0B)")
-                        val shimmerColors = intArrayOf(
-                            Color.parseColor("#FFD700"), Color.parseColor("#E2E8F0"), Color.parseColor("#06B6D4"),
-                            Color.parseColor("#EC4899"), Color.parseColor("#F59E0B")
-                        )
-                        AlertDialog.Builder(this)
-                            .setTitle("Pilih Warna Kilauan Sapuan Teks")
-                            .setItems(shimmerNames) { _, scIdx ->
-                                target.shimmerColor = shimmerColors[scIdx]
-                                target.isShimmerEnabled = true
-                                Toast.makeText(this, "Warna kilauan: ${shimmerNames[scIdx]}", Toast.LENGTH_SHORT).show()
-                                updatePreview()
-                            }
-                            .show()
-                    }
-                    6 -> {
-                        val speeds = arrayOf("0.5x (Lambat Berwibawa)", "1.0x (Normal Sinematik)", "1.8x (Cepat Berkilau)", "2.5x (Kilat Mewah)")
-                        val speedVals = floatArrayOf(0.5f, 1.0f, 1.8f, 2.5f)
-                        AlertDialog.Builder(this)
-                            .setTitle("Kecepatan Sapuan Kilau Teks")
-                            .setItems(speeds) { _, spIdx ->
-                                target.shimmerSpeed = speedVals[spIdx]
-                                target.isShimmerEnabled = true
-                                updatePreview()
-                            }
-                            .show()
-                    }
+                    0 -> showTextFrameStyleDialog(target)
+                    1 -> showTextFrameBgColorDialog(target)
+                    2 -> showTextFrameBorderColorDialog(target)
+                    3 -> showTextRenderModeDialog(target)
+                    4 -> showTextFontFamilyDialog(target)
+                    5 -> showTextColorDialog(target)
+                    6 -> showTextEmbossDepthDialog(target)
                     7 -> {
-                        target.isStarGlintEnabled = !target.isStarGlintEnabled
-                        Toast.makeText(this, if (target.isStarGlintEnabled) "Kilau Bintang Teks: ON" else "Kilau Bintang Teks: OFF", Toast.LENGTH_SHORT).show()
+                        target.isShimmerEnabled = !target.isShimmerEnabled
+                        Toast.makeText(this, if (target.isShimmerEnabled) "Kilauan Teks: ON" else "Kilauan: OFF", Toast.LENGTH_SHORT).show()
                         updatePreview()
                     }
-                    8 -> {
-                        val starColors = arrayOf("Emas Murni (#FFD700)", "Putih Berlian (#FFFFFF)", "Cyan Elektrik (#06B6D4)", "Rose Pink (#F43F5E)")
-                        val starVals = intArrayOf(Color.parseColor("#FFD700"), Color.WHITE, Color.parseColor("#06B6D4"), Color.parseColor("#F43F5E"))
-                        AlertDialog.Builder(this)
-                            .setTitle("Pilih Warna Bintang Kilau")
-                            .setItems(starColors) { _, stIdx ->
-                                target.starGlintColor = starVals[stIdx]
-                                target.isStarGlintEnabled = true
-                                updatePreview()
-                            }
-                            .show()
-                    }
-                    9 -> {
-                        val sizes = arrayOf("24sp (Kecil)", "36sp (Sedang)", "48sp (Standar Judul)", "64sp (Besar)", "80sp (Ekstra Besar)", "110sp (Maksimal Header)")
-                        val sizeVals = floatArrayOf(24f, 36f, 48f, 64f, 80f, 110f)
-                        AlertDialog.Builder(this)
-                            .setTitle("Ukuran Huruf (Font Size)")
-                            .setItems(sizes) { _, sIdx ->
-                                target.fontSize = sizeVals[sIdx]
-                                updatePreview()
-                            }
-                            .show()
-                    }
+                    8 -> showTextShimmerColorDialog(target)
+                    9 -> showTextShimmerSpeedDialog(target)
                     10 -> {
-                        val positions = arrayOf("Atas Layar", "Tengah Layar", "Bawah Layar", "Kiri Tengah", "Kanan Tengah")
-                        AlertDialog.Builder(this)
-                            .setTitle("Atur Posisi Preset Text")
-                            .setItems(positions) { _, pIdx ->
-                                when (pIdx) {
-                                    0 -> { target.x = 0.5f; target.y = 0.2f }
-                                    1 -> { target.x = 0.5f; target.y = 0.5f }
-                                    2 -> { target.x = 0.5f; target.y = 0.8f }
-                                    3 -> { target.x = 0.25f; target.y = 0.5f }
-                                    4 -> { target.x = 0.75f; target.y = 0.5f }
-                                }
-                                Toast.makeText(this, "Posisi diatur: ${positions[pIdx]} (Geser jari di preview untuk posisi bebas)", Toast.LENGTH_SHORT).show()
-                                updatePreview()
-                            }
-                            .show()
+                        target.isStarGlintEnabled = !target.isStarGlintEnabled
+                        Toast.makeText(this, if (target.isStarGlintEnabled) "Bintang Kilau: ON" else "Bintang Kilau: OFF", Toast.LENGTH_SHORT).show()
+                        updatePreview()
                     }
-                    11 -> {
-                        Toast.makeText(this, "Sentuh dan geser jari Anda pada layar preview di atas untuk memindahkan teks secara bebas!", Toast.LENGTH_LONG).show()
-                    }
+                    11 -> showTextStarGlintColorDialog(target)
+                    12 -> showTextFontSizeDialog(target)
+                    13 -> showTextPositionsDialog(target)
+                    14 -> showTextPresetTemplatesDialog()
                 }
             }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showTextFrameStyleDialog(target: AeMotionText) {
+        val frames = arrayOf(
+            "🚫 Tanpa Frame / Polos (None)",
+            "🔲 Kotak Membulat (Rounded Box / Pill Badge)",
+            "📺 Pita Penuh TV Ticker (Full-Width Running Banner)",
+            "💡 Border Bersinar Menyala (Neon Glow Border)",
+            "🤖 Sudut Siku Cyberpunk (Corner Brackets [  ])",
+            "🎬 Bar Sinematik Letterbox (Cinematic Bar)",
+            "📜 Bingkai Dobel Retro (Double Border Stamp)",
+            "🏷️ Pita Miring Promo (Angled Ribbon Banner)",
+            "💎 Kaca Transparan Blur (Gradient Glassmorphism)"
+        )
+        val frameCodes = arrayOf(
+            "NONE", "ROUNDED_BOX", "FULL_BANNER", "NEON_GLOW_BORDER",
+            "CYBERPUNK_CORNERS", "CINEMATIC_LETTERBOX", "DOUBLE_BORDER_STAMP",
+            "ANGLED_RIBBON", "GRADIENT_GLASS"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("🖼️ Pilih Bentuk & Model Template Frame")
+            .setItems(frames) { _, idx ->
+                target.frameStyle = frameCodes[idx]
+                if (target.frameStyle == "FULL_BANNER" && target.frameBgColor == Color.TRANSPARENT) {
+                    target.frameBgColor = Color.parseColor("#D9DC2626")
+                    target.frameBorderColor = Color.parseColor("#FFD700")
+                } else if (target.frameStyle == "NEON_GLOW_BORDER" && target.frameBorderColor == Color.TRANSPARENT) {
+                    target.frameBorderColor = Color.parseColor("#EC4899")
+                    target.frameBgColor = Color.argb(190, 15, 23, 42)
+                } else if (target.frameStyle == "CYBERPUNK_CORNERS" && target.frameBorderColor == Color.TRANSPARENT) {
+                    target.frameBorderColor = Color.parseColor("#06B6D4")
+                    target.frameBgColor = Color.argb(200, 15, 23, 42)
+                } else if (target.frameStyle == "ANGLED_RIBBON" && target.frameBgColor == Color.TRANSPARENT) {
+                    target.frameBgColor = Color.parseColor("#EF4444")
+                    target.frameBorderColor = Color.WHITE
+                }
+                Toast.makeText(this, "Frame teks: ${frames[idx]}", Toast.LENGTH_SHORT).show()
+                updateBadge()
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextFrameBgColorDialog(target: AeMotionText) {
+        val colors = arrayOf(
+            "🔴 Merah Berita TV (#D9DC2626)",
+            "🖤 Hitam Sinematik 80% (#CC000000)",
+            "🌌 Biru Gelap Deep Navy (#CC0F172A)",
+            "👑 Emas Mewah (#B3B45309)",
+            "💜 Ungu Neon Synthwave (#B3581C87)",
+            "💎 Cyan Berlian Transparan (#800891B2)",
+            "🤍 Putih Kaca Glass (#59FFFFFF)",
+            "🚫 Transparan (Tanpa Latar)"
+        )
+        val colorVals = intArrayOf(
+            Color.parseColor("#D9DC2626"),
+            Color.argb(204, 0, 0, 0),
+            Color.argb(204, 15, 23, 42),
+            Color.argb(180, 180, 83, 9),
+            Color.argb(180, 88, 28, 135),
+            Color.argb(128, 8, 145, 178),
+            Color.argb(90, 255, 255, 255),
+            Color.TRANSPARENT
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("🎨 Pilih Warna Background Frame")
+            .setItems(colors) { _, idx ->
+                target.frameBgColor = colorVals[idx]
+                Toast.makeText(this, "Background frame: ${colors[idx]}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextFrameBorderColorDialog(target: AeMotionText) {
+        val colors = arrayOf(
+            "👑 Emas Murni 24K (#FFD700)",
+            "🤍 Putih Murni (#FFFFFF)",
+            "💎 Cyan Neon (#06B6D4)",
+            "💛 Kuning Cerah (#FACC15)",
+            "🔴 Merah Crimson (#EF4444)",
+            "💖 Pink Magenta (#EC4899)",
+            "🖤 Hitam Onyx (#000000)"
+        )
+        val colorVals = intArrayOf(
+            Color.parseColor("#FFD700"),
+            Color.WHITE,
+            Color.parseColor("#06B6D4"),
+            Color.parseColor("#FACC15"),
+            Color.parseColor("#EF4444"),
+            Color.parseColor("#EC4899"),
+            Color.BLACK
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("✏️ Pilih Warna Garis Border Frame")
+            .setItems(colors) { _, idx ->
+                target.frameBorderColor = colorVals[idx]
+                target.frameBorderWidth = 3.0f
+                Toast.makeText(this, "Warna border: ${colors[idx]}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextRenderModeDialog(target: AeMotionText) {
+        val modes = arrayOf(
+            "🧊 3D Timbul (Emboss Extrusion Bevel dengan Highlight)",
+            "📐 3D Proyeksi Isometrik (Shadow Miring Bertingkat)",
+            "📄 2D Flat Minimalist Modern (Bersih & Rapi)",
+            "⭕ 2D Hollow Outline (Huruf Berongga Artistik)",
+            "💥 2D Dual-Tone Komik Pop Art (Stroke Tebal + Solid Shadow)",
+            "☁️ 2D Soft Drop Shadow (Bayangan Halus Sinematik)"
+        )
+        val modeCodes = arrayOf(
+            "3D_EMBOSS", "3D_ISOMETRIC", "2D_FLAT",
+            "2D_OUTLINE", "2D_DUAL_TONE", "2D_SOFT_SHADOW"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("🧊 Pilih Model Gaya Huruf (3D / 2D / Normal)")
+            .setItems(modes) { _, idx ->
+                target.textRenderMode = modeCodes[idx]
+                target.isEmbossEnabled = (modeCodes[idx] == "3D_EMBOSS" || modeCodes[idx] == "3D_ISOMETRIC")
+                Toast.makeText(this, "Model huruf: ${modes[idx]}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextFontFamilyDialog(target: AeMotionText) {
+        val fonts = arrayOf(
+            "🔤 Sans-Serif Normal (Minimalist Clean)",
+            "🔤 Sans-Serif Bold (Modern Header)",
+            "🏛️ Serif Bold (Klasik Sinematik)",
+            "📜 Serif Italic (Elegan / Sastra)",
+            "💻 Monospace (Terminal / Cyber Hacker)",
+            "✍️ Casual (Tulisan Tangan Santai)",
+            "✒️ Cursive (Kaligrafi Sambung Miring)",
+            "💥 Comic Display (Tebal Karakter Pop)",
+            "🎖️ Stencil Condensed (Tegas Militer / Ticker)"
+        )
+        val fontCodes = arrayOf(
+            "SANS_SERIF", "SANS_SERIF_BOLD", "SERIF", "SERIF_ITALIC",
+            "MONOSPACE", "CASUAL", "CURSIVE", "COMIC", "STENCIL"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("🔤 Pilihan Tipe Font & Tipografi")
+            .setItems(fonts) { _, idx ->
+                target.fontFamily = fontCodes[idx]
+                Toast.makeText(this, "Font diubah: ${fonts[idx]}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextColorDialog(target: AeMotionText) {
+        val colorNames = arrayOf(
+            "👑 Emas Murni 24K (Pure Gold #FFD700)",
+            "🌹 Rose Gold Mewah (#B76E79)",
+            "🥂 Champagne Gold Sinematik (#F7E7CE)",
+            "🥉 Bronze Metalik (#CD7F32)",
+            "✨ Emas Kuning Cerah (#FBBF24)",
+            "🤍 Putih Murni (#FFFFFF)",
+            "💎 Cyan Berlian Neon (#06B6D4)",
+            "💖 Pink Magenta Glamor (#EC4899)",
+            "💚 Hijau Limau Neon (#84CC16)",
+            "🔴 Merah Crimson (#EF4444)",
+            "💜 Ungu Amethyst (#A855F7)",
+            "🖤 Hitam Onyx (#0F172A)"
+        )
+        val colorVals = intArrayOf(
+            Color.parseColor("#FFD700"), Color.parseColor("#B76E79"),
+            Color.parseColor("#F7E7CE"), Color.parseColor("#CD7F32"),
+            Color.parseColor("#FBBF24"), Color.WHITE,
+            Color.parseColor("#06B6D4"), Color.parseColor("#EC4899"),
+            Color.parseColor("#84CC16"), Color.parseColor("#EF4444"),
+            Color.parseColor("#A855F7"), Color.parseColor("#0F172A")
+        )
+        AlertDialog.Builder(this)
+            .setTitle("🎨 Pilih Warna Huruf Teks")
+            .setItems(colorNames) { _, cIdx ->
+                target.color = colorVals[cIdx]
+                Toast.makeText(this, "Warna huruf: ${colorNames[cIdx]}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextEmbossDepthDialog(target: AeMotionText) {
+        val depths = arrayOf("Halus (3px)", "Sedang (6px)", "Tebal Sinematik (12px)", "Ekstrim 3D Bevel (20px)")
+        val depthVals = floatArrayOf(3f, 6f, 12f, 20f)
+        AlertDialog.Builder(this)
+            .setTitle("📐 Kedalaman Timbul 3D")
+            .setItems(depths) { _, dIdx ->
+                target.embossDepth = depthVals[dIdx]
+                target.isEmbossEnabled = true
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextShimmerColorDialog(target: AeMotionText) {
+        val shimmerNames = arrayOf("Emas Murni (#FFD700)", "Perak Berlian (#E2E8F0)", "Cyan Neon (#06B6D4)", "Pink Rose (#EC4899)", "Amber Warm (#F59E0B)")
+        val shimmerColors = intArrayOf(
+            Color.parseColor("#FFD700"), Color.parseColor("#E2E8F0"), Color.parseColor("#06B6D4"),
+            Color.parseColor("#EC4899"), Color.parseColor("#F59E0B")
+        )
+        AlertDialog.Builder(this)
+            .setTitle("🎨 Warna Kilauan Sapuan Teks")
+            .setItems(shimmerNames) { _, scIdx ->
+                target.shimmerColor = shimmerColors[scIdx]
+                target.isShimmerEnabled = true
+                Toast.makeText(this, "Warna kilauan: ${shimmerNames[scIdx]}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextShimmerSpeedDialog(target: AeMotionText) {
+        val speeds = arrayOf("0.5x (Lambat Berwibawa)", "1.0x (Normal Sinematik)", "1.8x (Cepat Berkilau)", "2.5x (Kilat Mewah)")
+        val speedVals = floatArrayOf(0.5f, 1.0f, 1.8f, 2.5f)
+        AlertDialog.Builder(this)
+            .setTitle("⚡ Kecepatan Sapuan Kilau Teks")
+            .setItems(speeds) { _, spIdx ->
+                target.shimmerSpeed = speedVals[spIdx]
+                target.isShimmerEnabled = true
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextStarGlintColorDialog(target: AeMotionText) {
+        val starColors = arrayOf("Emas Murni (#FFD700)", "Putih Berlian (#FFFFFF)", "Cyan Elektrik (#06B6D4)", "Rose Pink (#F43F5E)")
+        val starVals = intArrayOf(Color.parseColor("#FFD700"), Color.WHITE, Color.parseColor("#06B6D4"), Color.parseColor("#F43F5E"))
+        AlertDialog.Builder(this)
+            .setTitle("⭐ Warna Bintang Kilau di Teks")
+            .setItems(starColors) { _, stIdx ->
+                target.starGlintColor = starVals[stIdx]
+                target.isStarGlintEnabled = true
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun showTextPresetTemplatesDialog() {
+        activeDragTarget = DragTarget.MOTION_TEXT
+        val templateNames = arrayOf(
+            "📰 Breaking News Running Ticker (Teks Berjalan Kiri + Banner Merah Bawah)",
+            "🎬 Cinema End Credits Roll (Teks Bergulir Naik + Frame Sinematik)",
+            "👑 Royal Gold 3D Majestic (Huruf Timbul Emas 24K + Cap Retro + Kilau)",
+            "⚡ Cyberpunk 2077 Neon Glitch (Glitch RGB + Siku Sudut Futuristik)",
+            "🕹️ Retro Synthwave 80s (Marquee Berjalan Kanan + Border Neon Ungu)",
+            "💥 Comic Action Pop (Naik-Turun Membal + 2D Dual Tone + Pita Miring)",
+            "💎 Minimalist Modern Glass Card (Fade Slide + Kaca Transparan)",
+            "🏷️ Flash Sale Promo Ribbon (Zoom Pop + Pita Miring Merah/Oranye)",
+            "🌊 Ocean Breeze Floating (Gelombang Ombak + Pill Biru Transparan)"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("📋 Pilih Template Desain Teks Siap Pakai")
+            .setItems(templateNames) { _, which ->
+                val textItem = AeMotionText()
+                when (which) {
+                    0 -> {
+                        // 1. Breaking News Running Ticker
+                        textItem.text = "BREAKING NEWS: KABAR TERBARU HARI INI... LIVE UPDATE LANGSUNG DARI STUDIO..."
+                        textItem.style = "SCROLL_LEFT"
+                        textItem.scrollSpeed = 1.0f
+                        textItem.fontFamily = "SANS_SERIF_BOLD"
+                        textItem.textRenderMode = "2D_FLAT"
+                        textItem.color = Color.WHITE
+                        textItem.strokeColor = Color.BLACK
+                        textItem.strokeWidth = 2.0f
+                        textItem.frameStyle = "FULL_BANNER"
+                        textItem.frameBgColor = Color.parseColor("#D9DC2626")
+                        textItem.frameBorderColor = Color.parseColor("#FFD700")
+                        textItem.frameBorderWidth = 3.0f
+                        textItem.fontSize = 42f
+                        textItem.y = 0.88f
+                        textItem.isShimmerEnabled = false
+                        textItem.isStarGlintEnabled = false
+                    }
+                    1 -> {
+                        // 2. Cinema End Credits Roll
+                        textItem.text = "PRODUCED BY MEDIA STUDIO PRO\nDIRECTED BY AFTER EFFECTS\nSTARRING CREATIVE CREW\nTHANK YOU FOR WATCHING"
+                        textItem.style = "SCROLL_UP"
+                        textItem.scrollSpeed = 0.8f
+                        textItem.fontFamily = "SERIF"
+                        textItem.textRenderMode = "2D_SOFT_SHADOW"
+                        textItem.color = Color.parseColor("#F7E7CE")
+                        textItem.frameStyle = "CINEMATIC_LETTERBOX"
+                        textItem.frameBgColor = Color.argb(210, 0, 0, 0)
+                        textItem.frameBorderColor = Color.parseColor("#F7E7CE")
+                        textItem.frameBorderWidth = 2.0f
+                        textItem.fontSize = 36f
+                        textItem.x = 0.5f
+                        textItem.y = 0.5f
+                    }
+                    2 -> {
+                        // 3. Royal Gold 3D Majestic
+                        textItem.text = "AFTER EFFECTS MASTERPIECE"
+                        textItem.style = "TYPEWRITER"
+                        textItem.fontFamily = "SERIF"
+                        textItem.textRenderMode = "3D_EMBOSS"
+                        textItem.isEmbossEnabled = true
+                        textItem.embossDepth = 12f
+                        textItem.color = Color.parseColor("#FFD700")
+                        textItem.strokeColor = Color.parseColor("#78350F")
+                        textItem.strokeWidth = 2.5f
+                        textItem.frameStyle = "DOUBLE_BORDER_STAMP"
+                        textItem.frameBgColor = Color.argb(200, 15, 23, 42)
+                        textItem.frameBorderColor = Color.parseColor("#FFD700")
+                        textItem.frameBorderWidth = 2.5f
+                        textItem.isShimmerEnabled = true
+                        textItem.shimmerColor = Color.parseColor("#FFD700")
+                        textItem.isStarGlintEnabled = true
+                        textItem.starGlintColor = Color.parseColor("#FFD700")
+                        textItem.fontSize = 48f
+                        textItem.x = 0.5f
+                        textItem.y = 0.5f
+                    }
+                    3 -> {
+                        // 4. Cyberpunk 2077 Neon Glitch
+                        textItem.text = "SYSTEM OVERLOAD // ERROR 404"
+                        textItem.style = "GLITCH"
+                        textItem.fontFamily = "MONOSPACE"
+                        textItem.textRenderMode = "2D_FLAT"
+                        textItem.color = Color.parseColor("#06B6D4")
+                        textItem.glowColor = Color.parseColor("#EC4899")
+                        textItem.strokeWidth = 0f
+                        textItem.frameStyle = "CYBERPUNK_CORNERS"
+                        textItem.frameBgColor = Color.argb(210, 15, 23, 42)
+                        textItem.frameBorderColor = Color.parseColor("#06B6D4")
+                        textItem.frameBorderWidth = 3.5f
+                        textItem.fontSize = 42f
+                        textItem.x = 0.5f
+                        textItem.y = 0.5f
+                    }
+                    4 -> {
+                        // 5. Retro Synthwave 80s
+                        textItem.text = "★ RETRO SYNTHWAVE 1984 ★"
+                        textItem.style = "SCROLL_RIGHT"
+                        textItem.scrollSpeed = 1.2f
+                        textItem.fontFamily = "CASUAL"
+                        textItem.textRenderMode = "3D_ISOMETRIC"
+                        textItem.isEmbossEnabled = true
+                        textItem.embossDepth = 8f
+                        textItem.color = Color.parseColor("#EC4899")
+                        textItem.glowColor = Color.parseColor("#8B5CF6")
+                        textItem.frameStyle = "NEON_GLOW_BORDER"
+                        textItem.frameBgColor = Color.argb(200, 15, 23, 42)
+                        textItem.frameBorderColor = Color.parseColor("#EC4899")
+                        textItem.fontSize = 44f
+                        textItem.y = 0.25f
+                    }
+                    5 -> {
+                        // 6. Comic Action Pop
+                        textItem.text = "BOOM! SUPER POWER!"
+                        textItem.style = "BOUNCE_VERTICAL"
+                        textItem.scrollSpeed = 1.2f
+                        textItem.fontFamily = "COMIC"
+                        textItem.textRenderMode = "2D_DUAL_TONE"
+                        textItem.color = Color.parseColor("#FACC15")
+                        textItem.strokeColor = Color.BLACK
+                        textItem.strokeWidth = 5.0f
+                        textItem.shadowColor = Color.parseColor("#EF4444")
+                        textItem.frameStyle = "ANGLED_RIBBON"
+                        textItem.frameBgColor = Color.parseColor("#EF4444")
+                        textItem.frameBorderColor = Color.WHITE
+                        textItem.frameBorderWidth = 3.0f
+                        textItem.fontSize = 48f
+                        textItem.x = 0.5f
+                        textItem.y = 0.5f
+                    }
+                    6 -> {
+                        // 7. Minimalist Modern Glass Card
+                        textItem.text = "MINIMALIST AESTHETIC"
+                        textItem.style = "FADE_SLIDE"
+                        textItem.fontFamily = "SANS_SERIF_BOLD"
+                        textItem.textRenderMode = "2D_FLAT"
+                        textItem.color = Color.WHITE
+                        textItem.strokeWidth = 0f
+                        textItem.frameStyle = "GRADIENT_GLASS"
+                        textItem.frameBorderColor = Color.argb(160, 255, 255, 255)
+                        textItem.frameBorderWidth = 1.5f
+                        textItem.fontSize = 40f
+                        textItem.x = 0.5f
+                        textItem.y = 0.5f
+                    }
+                    7 -> {
+                        // 8. Flash Sale Promo Ribbon
+                        textItem.text = "🔥 MEGA SALE 50% OFF 🔥"
+                        textItem.style = "KINETIC_ZOOM"
+                        textItem.fontFamily = "STENCIL"
+                        textItem.textRenderMode = "2D_DUAL_TONE"
+                        textItem.color = Color.WHITE
+                        textItem.strokeColor = Color.parseColor("#78350F")
+                        textItem.strokeWidth = 3.0f
+                        textItem.shadowColor = Color.BLACK
+                        textItem.frameStyle = "ANGLED_RIBBON"
+                        textItem.frameBgColor = Color.parseColor("#EA580C")
+                        textItem.frameBorderColor = Color.parseColor("#FEF08A")
+                        textItem.frameBorderWidth = 3.0f
+                        textItem.fontSize = 44f
+                        textItem.x = 0.5f
+                        textItem.y = 0.5f
+                    }
+                    8 -> {
+                        // 9. Ocean Breeze Floating
+                        textItem.text = "SUMMER VACATION VIBES"
+                        textItem.style = "WAVE_BOUNCE"
+                        textItem.fontFamily = "CASUAL"
+                        textItem.textRenderMode = "2D_SOFT_SHADOW"
+                        textItem.color = Color.parseColor("#38BDF8")
+                        textItem.frameStyle = "ROUNDED_BOX"
+                        textItem.frameBgColor = Color.argb(190, 2, 132, 199)
+                        textItem.frameBorderColor = Color.parseColor("#BAE6FD")
+                        textItem.frameBorderWidth = 2.5f
+                        textItem.fontSize = 44f
+                        textItem.x = 0.5f
+                        textItem.y = 0.5f
+                    }
+                }
+                aeConfig.motionTexts.clear()
+                aeConfig.motionTexts.add(textItem)
+                Toast.makeText(this, "Template diterapkan: ${templateNames[which]}", Toast.LENGTH_SHORT).show()
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
             .show()
     }
 
@@ -2353,8 +2817,9 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             "✨ Partikel Bling, Kunang-Kunang, Bintang, Emas & Sparks",
             "🎛️ Parameter Partikel (Warna, Arah Acak & Turbulensi)",
             "🎞️ Film Grain 35mm Real Stock",
-            "🔤 Motion Text Animasi",
-            "✨ Huruf Timbul 3D, Kilauan Shimmer & Bintang Teks",
+            "🔤 Motion Text & Teks Berjalan",
+            "📋 Template Teks Siap Pakai (News Ticker, Credits, 3D, Frames)",
+            "✨ Gaya Huruf 3D/2D, Kilauan & Frame Teks",
             "🎉 Stiker Animasi Giphy/PNG",
             "🖼️ Tumpuk Video / Foto (Overlay, PIP & Transisi)",
             "🎵 Audio Waveform / Spectrum React",
@@ -2385,18 +2850,19 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     10 -> showParticleSettingsDialog()
                     11 -> binding.btnVfxFilmGrain.performClick()
                     12 -> showMotionTextDialog()
-                    13 -> showTextStyleDialog()
-                    14 -> showStickerDialog()
-                    15 -> binding.btnVfxOverlay.performClick()
-                    16 -> binding.btnVfxAudioSpectrum.performClick()
-                    17 -> showBlendModeDialog()
-                    18 -> showUnmultDialog()
-                    19 -> showContourDialog()
-                    20 -> showCurlNoiseDialog()
-                    21 -> showDepthOfFieldDialog()
-                    22 -> showGuidesDialog()
-                    23 -> takeSnapshot()
-                    24 -> showCompSettingsDialog()
+                    13 -> showTextPresetTemplatesDialog()
+                    14 -> showTextStyleDialog()
+                    15 -> showStickerDialog()
+                    16 -> binding.btnVfxOverlay.performClick()
+                    17 -> binding.btnVfxAudioSpectrum.performClick()
+                    18 -> showBlendModeDialog()
+                    19 -> showUnmultDialog()
+                    20 -> showContourDialog()
+                    21 -> showCurlNoiseDialog()
+                    22 -> showDepthOfFieldDialog()
+                    23 -> showGuidesDialog()
+                    24 -> takeSnapshot()
+                    25 -> showCompSettingsDialog()
                 }
             }
             .setNegativeButton("Tutup", null)

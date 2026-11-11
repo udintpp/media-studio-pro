@@ -494,7 +494,17 @@
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
                     android:layout_marginEnd="6dp"
-                    android:text="🔤 Motion Text"
+                    android:text="🔤 Teks &amp; Gerak"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_text_template"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="📋 Template Teks"
+                    android:textColor="#38BDF8"
                     android:textSize="11sp" />
 
                 <Button
@@ -503,7 +513,7 @@
                     android:layout_width="wrap_content"
                     android:layout_height="40dp"
                     android:layout_marginEnd="6dp"
-                    android:text="✨ Timbul &amp; Font"
+                    android:text="✨ Gaya, 3D/2D &amp; Frame"
                     android:textColor="@color/accent_amber"
                     android:textSize="11sp" />
 
