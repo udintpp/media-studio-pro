@@ -26,8 +26,10 @@ import android.view.View
 import android.view.animation.LinearInterpolator
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.Toast
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
@@ -37,7 +39,10 @@ import com.udintpp.mediastudio.data.model.AeEffectType
 import com.udintpp.mediastudio.data.model.AeKeyframe
 import com.udintpp.mediastudio.data.model.AeMask
 import com.udintpp.mediastudio.data.model.AeMaskShape
+import com.udintpp.mediastudio.data.model.AeMediaOverlay
 import com.udintpp.mediastudio.data.model.AeMotionText
+import com.udintpp.mediastudio.data.model.AeOverlayMediaType
+import com.udintpp.mediastudio.data.model.AeOverlayTransition
 import com.udintpp.mediastudio.data.model.AeSticker
 import com.udintpp.mediastudio.data.model.ExportResolution
 import com.udintpp.mediastudio.data.model.VideoExportFormat
@@ -95,14 +100,24 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     private val aeConfig = AeConfig()
 
     private enum class DragTarget {
-        MOTION_TEXT, STICKER
+        MOTION_TEXT, STICKER, OVERLAY_MEDIA
     }
     private var activeDragTarget = DragTarget.MOTION_TEXT
 
     private enum class ActiveVfxSlider {
-        GLOW, GLITCH, WIGGLE, LENS_FLARE, GRAIN, LIGHT_RAYS, TURBULENT, ZOOM_BLUR, SABER, ROT_X, ROT_Y, UNMULT, CONTOUR, CURL_NOISE, DOF, NONE
+        GLOW, GLITCH, WIGGLE, LENS_FLARE, GRAIN, LIGHT_RAYS, TURBULENT, ZOOM_BLUR, SABER, ROT_X, ROT_Y, UNMULT, CONTOUR, CURL_NOISE, DOF, OVERLAY_SCALE, OVERLAY_OPACITY, NONE
     }
     private var activeSlider = ActiveVfxSlider.GLOW
+
+    private val overlayRetrievers = mutableMapOf<String, MediaMetadataRetriever>()
+
+    private val pickOverlayPhotoLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { addPhotoOverlay(it) }
+    }
+
+    private val pickOverlayVideoLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri?.let { addVideoOverlay(it) }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -269,6 +284,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         val reuseBuf = if (bufIdx == 0) outputBitmapA else outputBitmapB
 
         renderHandler.post {
+            updateVideoOverlayFrames(capturedConfig, capturedTimeMs)
             val output = AfterEffectsRenderer.renderFrame(frameCopy, capturedTimeMs, capturedConfig, reuseBuf)
             isRenderPending.set(false)
             mainHandler.post {
@@ -600,6 +616,10 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             showStickerDialog()
         }
 
+        binding.btnVfxOverlay.setOnClickListener {
+            showMediaOverlayDialog()
+        }
+
         // --- Official Adobe After Effects Tools & Extensions ---
         binding.btnQuickApply.setOnClickListener {
             showQuickApplyDialog()
@@ -651,6 +671,20 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     ActiveVfxSlider.CONTOUR -> aeConfig.contourThreshold = value / 100f
                     ActiveVfxSlider.CURL_NOISE -> aeConfig.curlNoiseSpeed = (value / 50f).coerceAtLeast(0.1f)
                     ActiveVfxSlider.DOF -> aeConfig.dofApertureBlur = (value / 100f) * 20f
+                    ActiveVfxSlider.OVERLAY_SCALE -> {
+                        if (aeConfig.mediaOverlays.isNotEmpty()) {
+                            val ov = aeConfig.mediaOverlays.last()
+                            ov.scale = (value / 50f).coerceIn(0.1f, 3.0f)
+                            binding.tvVfxToolValue.text = "${String.format(Locale.US, "%.1f", ov.scale)}x"
+                        }
+                    }
+                    ActiveVfxSlider.OVERLAY_OPACITY -> {
+                        if (aeConfig.mediaOverlays.isNotEmpty()) {
+                            val ov = aeConfig.mediaOverlays.last()
+                            ov.opacity = (value / 100f).coerceIn(0.0f, 1.0f)
+                            binding.tvVfxToolValue.text = "${value.toInt()}%"
+                        }
+                    }
                     ActiveVfxSlider.NONE -> {}
                 }
                 updatePreview()
@@ -687,12 +721,14 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             aeConfig.isAudioSpectrumEnabled,
             aeConfig.motionTexts.isNotEmpty(),
             aeConfig.stickers.isNotEmpty(),
+            aeConfig.mediaOverlays.isNotEmpty(),
             aeConfig.isUnmultEnabled,
             aeConfig.isContourPaintEnabled,
             aeConfig.isCurlNoiseEnabled,
             aeConfig.isDepthOfFieldEnabled
         ).count { it }
         binding.tvActiveVfxBadge.text = "⚡ AE Engine: $activeCount Efek Aktif"
+        binding.btnVfxOverlay.text = if (aeConfig.mediaOverlays.isNotEmpty()) "🖼️ Tumpuk (${aeConfig.mediaOverlays.size})" else "🖼️ Tumpuk Video/Foto"
     }
 
     private fun updateKeyframeCount() {
@@ -1509,6 +1545,426 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             .show()
     }
 
+    // --- Menumpuk Video & Foto (Media Overlay / PIP Track) ---
+
+    private fun addPhotoOverlay(uri: Uri) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val stream = contentResolver.openInputStream(uri)
+                val opts = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeStream(stream, null, opts)
+                stream?.close()
+
+                val maxDim = max(opts.outWidth, opts.outHeight)
+                var inSample = 1
+                while (maxDim / inSample > 1920) inSample *= 2
+
+                val decodeOpts = BitmapFactory.Options().apply { inSampleSize = inSample }
+                val decodeStream = contentResolver.openInputStream(uri)
+                val bmp = BitmapFactory.decodeStream(decodeStream, null, decodeOpts)
+                decodeStream?.close()
+
+                if (bmp != null) {
+                    val overlay = AeMediaOverlay(
+                        uriString = uri.toString(),
+                        mediaType = AeOverlayMediaType.IMAGE,
+                        name = "Foto #${aeConfig.mediaOverlays.size + 1}",
+                        cachedBitmap = bmp,
+                        startTimeMs = currentTimeMs,
+                        endTimeMs = durationMs.coerceAtLeast(currentTimeMs + 3000L),
+                        scale = 0.5f,
+                        opacity = 1.0f,
+                        x = 0.5f,
+                        y = 0.5f
+                    )
+                    aeConfig.mediaOverlays.add(overlay)
+                    activeDragTarget = DragTarget.OVERLAY_MEDIA
+                    withContext(Dispatchers.Main) {
+                        binding.btnVfxOverlay.text = "🖼️ Tumpuk (${aeConfig.mediaOverlays.size})"
+                        updateBadge()
+                        updatePreview()
+                        Toast.makeText(
+                            this@AfterEffectsStudioActivity,
+                            "Foto overlay ditambahkan! Geser di layar preview untuk memposisikan.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@AfterEffectsStudioActivity, "Gagal memuat foto overlay: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun addVideoOverlay(uri: Uri) {
+        lifecycleScope.launch(Dispatchers.IO) {
+            try {
+                val retriever = MediaMetadataRetriever()
+                retriever.setDataSource(this@AfterEffectsStudioActivity, uri)
+                val durStr = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
+                val overlayDur = durStr?.toLongOrNull() ?: 5000L
+                val firstFrame = retriever.getFrameAtTime(0L, MediaMetadataRetriever.OPTION_CLOSEST_SYNC)
+
+                if (firstFrame != null) {
+                    val overlay = AeMediaOverlay(
+                        uriString = uri.toString(),
+                        mediaType = AeOverlayMediaType.VIDEO,
+                        name = "Video #${aeConfig.mediaOverlays.size + 1}",
+                        cachedBitmap = firstFrame,
+                        videoDurationMs = overlayDur,
+                        startTimeMs = currentTimeMs,
+                        endTimeMs = min(durationMs, currentTimeMs + overlayDur).coerceAtLeast(currentTimeMs + 2000L),
+                        scale = 0.5f,
+                        opacity = 1.0f,
+                        x = 0.5f,
+                        y = 0.5f
+                    )
+                    overlayRetrievers[overlay.id] = retriever
+                    aeConfig.mediaOverlays.add(overlay)
+                    activeDragTarget = DragTarget.OVERLAY_MEDIA
+                    withContext(Dispatchers.Main) {
+                        binding.btnVfxOverlay.text = "🖼️ Tumpuk (${aeConfig.mediaOverlays.size})"
+                        updateBadge()
+                        updatePreview()
+                        Toast.makeText(
+                            this@AfterEffectsStudioActivity,
+                            "Video overlay ditambahkan (${formatTime(overlayDur)})! Geser di layar preview untuk memposisikan.",
+                            Toast.LENGTH_LONG
+                        ).show()
+                    }
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    Toast.makeText(this@AfterEffectsStudioActivity, "Gagal memuat video overlay: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+
+    private fun updateVideoOverlayFrames(config: AeConfig, timeMs: Long) {
+        for (ov in config.mediaOverlays) {
+            if (ov.mediaType == AeOverlayMediaType.VIDEO && timeMs in ov.startTimeMs..ov.endTimeMs) {
+                val relMs = timeMs - ov.startTimeMs
+                val targetMs = if (ov.videoDurationMs > 0) relMs % ov.videoDurationMs else relMs
+                if (Math.abs(relMs - ov.lastExtractedTimeMs) > 60L) {
+                    val ret = overlayRetrievers[ov.id]
+                    if (ret != null) {
+                        try {
+                            val frame = ret.getFrameAtTime(targetMs * 1000L, MediaMetadataRetriever.OPTION_CLOSEST)
+                            if (frame != null) {
+                                ov.cachedBitmap = frame
+                                ov.lastExtractedTimeMs = relMs
+                            }
+                        } catch (_: Exception) {}
+                    }
+                }
+            }
+        }
+    }
+
+    private fun showMediaOverlayDialog() {
+        if (aeConfig.mediaOverlays.isEmpty()) {
+            val emptyOptions = arrayOf(
+                "📸 Tambah Foto Overlay (Galeri)",
+                "🎬 Tambah Video Overlay (Galeri)"
+            )
+            AlertDialog.Builder(this)
+                .setTitle("🖼️ Menumpuk Video / Foto (Overlay Layer)")
+                .setItems(emptyOptions) { _, which ->
+                    when (which) {
+                        0 -> pickOverlayPhotoLauncher.launch("image/*")
+                        1 -> pickOverlayVideoLauncher.launch("video/*")
+                    }
+                }
+                .setNegativeButton("Batal", null)
+                .show()
+            return
+        }
+
+        val active = aeConfig.mediaOverlays.last()
+        val mediaLabel = if (active.mediaType == AeOverlayMediaType.VIDEO) "🎬 Video" else "📸 Foto"
+        val options = arrayOf(
+            "➕ Tambah Foto Overlay Baru",
+            "🎬 Tambah Video Overlay Baru",
+            "🔍 Atur Skala Ukuran (${(active.scale * 100).toInt()}%)",
+            "🎛️ Atur Intensitas / Opasitas (${(active.opacity * 100).toInt()}%)",
+            "⏱️ Atur Batas Durasi Tampil (${formatTime(active.startTimeMs)} - ${formatTime(active.endTimeMs)})",
+            "🎭 Mode Transisi Masuk & Keluar (${active.transition.displayName})",
+            "⏳ Atur Durasi Transisi (${active.transitionDurationMs} ms)",
+            "📍 Posisikan Layer (Tengah, Sudut PIP, atau Geser Preview)",
+            "🔄 Rotasi Derajat (${active.rotation.toInt()}°)",
+            "🎨 Mode Blending Layer (${active.blendMode.displayName})",
+            "🖼️ Sudut Melengkung & Border",
+            "🗑️ Hapus Overlay Aktif ($mediaLabel)",
+            "🧹 Hapus Semua Overlay (${aeConfig.mediaOverlays.size})"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("🖼️ Pengaturan Tumpukan Media (${active.name})")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> pickOverlayPhotoLauncher.launch("image/*")
+                    1 -> pickOverlayVideoLauncher.launch("video/*")
+                    2 -> showOverlayScaleDialog(active)
+                    3 -> showOverlayOpacityDialog(active)
+                    4 -> showOverlayDurationDialog(active)
+                    5 -> showOverlayTransitionDialog(active)
+                    6 -> showOverlayTransitionDurationDialog(active)
+                    7 -> showOverlayPositionDialog(active)
+                    8 -> showOverlayRotationDialog(active)
+                    9 -> showOverlayBlendDialog(active)
+                    10 -> showOverlayBorderCornerDialog(active)
+                    11 -> {
+                        val removed = aeConfig.mediaOverlays.removeAt(aeConfig.mediaOverlays.size - 1)
+                        try {
+                            overlayRetrievers.remove(removed.id)?.release()
+                            removed.cachedBitmap?.recycle()
+                        } catch (_: Exception) {}
+                        binding.btnVfxOverlay.text = if (aeConfig.mediaOverlays.isNotEmpty()) "🖼️ Tumpuk (${aeConfig.mediaOverlays.size})" else "🖼️ Tumpuk Video/Foto"
+                        Toast.makeText(this, "Overlay ${removed.name} dihapus", Toast.LENGTH_SHORT).show()
+                        updateBadge()
+                        updatePreview()
+                    }
+                    12 -> {
+                        for (ov in aeConfig.mediaOverlays) {
+                            try {
+                                overlayRetrievers.remove(ov.id)?.release()
+                                ov.cachedBitmap?.recycle()
+                            } catch (_: Exception) {}
+                        }
+                        aeConfig.mediaOverlays.clear()
+                        binding.btnVfxOverlay.text = "🖼️ Tumpuk Video/Foto"
+                        Toast.makeText(this, "Semua overlay dibersihkan", Toast.LENGTH_SHORT).show()
+                        updateBadge()
+                        updatePreview()
+                    }
+                }
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showOverlayDurationDialog(overlay: AeMediaOverlay) {
+        val options = arrayOf(
+            "📌 Jadikan Waktu Saat Ini (${formatTime(currentTimeMs)}) Sebagai Batas Awal",
+            "🏁 Jadikan Waktu Saat Ini (${formatTime(currentTimeMs)}) Sebagai Batas Akhir",
+            "⏱️ Input Manual Detik Awal & Akhir",
+            "🔄 Tampilkan Penuh Sepanjang Durasi (00:00 - ${formatTime(durationMs)})"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("⏱️ Atur Batas Waktu Tampil Overlay")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        overlay.startTimeMs = currentTimeMs.coerceAtMost(durationMs)
+                        if (overlay.endTimeMs <= overlay.startTimeMs) {
+                            overlay.endTimeMs = (overlay.startTimeMs + 2000L).coerceAtMost(durationMs)
+                        }
+                        Toast.makeText(this, "Batas awal diatur ke: ${formatTime(overlay.startTimeMs)}", Toast.LENGTH_SHORT).show()
+                        updatePreview()
+                    }
+                    1 -> {
+                        overlay.endTimeMs = currentTimeMs.coerceAtLeast(overlay.startTimeMs + 200L).coerceAtMost(durationMs)
+                        Toast.makeText(this, "Batas akhir diatur ke: ${formatTime(overlay.endTimeMs)}", Toast.LENGTH_SHORT).show()
+                        updatePreview()
+                    }
+                    2 -> {
+                        val layout = LinearLayout(this).apply {
+                            orientation = LinearLayout.VERTICAL
+                            setPadding(48, 24, 48, 24)
+                        }
+                        val etStart = EditText(this).apply {
+                            hint = "Detik Mulai (misal: 1.5)"
+                            setText("${overlay.startTimeMs / 1000f}")
+                            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+                        }
+                        val etEnd = EditText(this).apply {
+                            hint = "Detik Selesai (misal: 6.0)"
+                            setText("${overlay.endTimeMs / 1000f}")
+                            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+                        }
+                        layout.addView(etStart)
+                        layout.addView(etEnd)
+
+                        AlertDialog.Builder(this)
+                            .setTitle("Input Detik Batas Awal & Akhir")
+                            .setView(layout)
+                            .setPositiveButton("Simpan") { _, _ ->
+                                val sSec = etStart.text.toString().toFloatOrNull() ?: (overlay.startTimeMs / 1000f)
+                                val eSec = etEnd.text.toString().toFloatOrNull() ?: (overlay.endTimeMs / 1000f)
+                                overlay.startTimeMs = (sSec * 1000L).toLong().coerceIn(0L, durationMs)
+                                overlay.endTimeMs = (eSec * 1000L).toLong().coerceIn(overlay.startTimeMs + 100L, durationMs)
+                                Toast.makeText(this, "Batas tampil: ${formatTime(overlay.startTimeMs)} s/d ${formatTime(overlay.endTimeMs)}", Toast.LENGTH_SHORT).show()
+                                updatePreview()
+                            }
+                            .setNegativeButton("Batal", null)
+                            .show()
+                    }
+                    3 -> {
+                        overlay.startTimeMs = 0L
+                        overlay.endTimeMs = durationMs
+                        Toast.makeText(this, "Overlay tampil penuh: 00:00 s/d ${formatTime(durationMs)}", Toast.LENGTH_SHORT).show()
+                        updatePreview()
+                    }
+                }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showOverlayTransitionDialog(overlay: AeMediaOverlay) {
+        val transitions = AeOverlayTransition.values()
+        val names = transitions.map { it.displayName }.toTypedArray()
+
+        AlertDialog.Builder(this)
+            .setTitle("🎭 Pilih Mode Transisi Masuk & Keluar")
+            .setItems(names) { _, which ->
+                overlay.transition = transitions[which]
+                Toast.makeText(this, "Transisi diubah: ${transitions[which].displayName}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showOverlayTransitionDurationDialog(overlay: AeMediaOverlay) {
+        val durations = arrayOf("200 ms (Cepat)", "500 ms (Standar Halus)", "1000 ms (1 Detik Sinematik)", "1500 ms (1.5 Detik)", "2000 ms (2 Detik Sangat Lembut)")
+        val durValues = longArrayOf(200L, 500L, 1000L, 1500L, 2000L)
+
+        AlertDialog.Builder(this)
+            .setTitle("⏳ Atur Kecepatan / Durasi Transisi")
+            .setItems(durations) { _, which ->
+                overlay.transitionDurationMs = durValues[which]
+                Toast.makeText(this, "Durasi transisi: ${durations[which]}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showOverlayScaleDialog(overlay: AeMediaOverlay) {
+        val scalePresets = arrayOf("25% (Kecil PIP Sudut)", "50% (Sedang Separuh Layar)", "75% (Proporsional)", "100% (Ukuran Asli)", "125% (Besar)", "150% (Zoom Maksimal)", "🎛️ Buka Slider di Bawah untuk Atur Bebas")
+        val scaleValues = floatArrayOf(0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, -1f)
+
+        AlertDialog.Builder(this)
+            .setTitle("🔍 Atur Skala Ukuran Overlay")
+            .setItems(scalePresets) { _, which ->
+                if (scaleValues[which] > 0) {
+                    overlay.scale = scaleValues[which]
+                    Toast.makeText(this, "Skala overlay: ${scalePresets[which]}", Toast.LENGTH_SHORT).show()
+                    updatePreview()
+                } else {
+                    activeSlider = ActiveVfxSlider.OVERLAY_SCALE
+                    updateSliderUI("Skala Media Overlay", (overlay.scale * 50f).toInt())
+                }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showOverlayOpacityDialog(overlay: AeMediaOverlay) {
+        val opPresets = arrayOf("100% (Solid / Terang Maksimal)", "80% (Transparan Halus)", "60% (Semi Transparan)", "40% (Transparan Sedang)", "20% (Bayangan Lembut)", "🎛️ Buka Slider di Bawah untuk Atur Bebas")
+        val opValues = floatArrayOf(1.0f, 0.8f, 0.6f, 0.4f, 0.2f, -1f)
+
+        AlertDialog.Builder(this)
+            .setTitle("🎛️ Atur Intensitas / Opasitas Overlay")
+            .setItems(opPresets) { _, which ->
+                if (opValues[which] > 0) {
+                    overlay.opacity = opValues[which]
+                    Toast.makeText(this, "Intensitas overlay: ${opPresets[which]}", Toast.LENGTH_SHORT).show()
+                    updatePreview()
+                } else {
+                    activeSlider = ActiveVfxSlider.OVERLAY_OPACITY
+                    updateSliderUI("Intensitas / Opasitas Overlay", (overlay.opacity * 100f).toInt())
+                }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showOverlayPositionDialog(overlay: AeMediaOverlay) {
+        val positions = arrayOf("🎯 Tengah Layar (Center)", "↖️ Kiri Atas (PIP Corner)", "↗️ Kanan Atas (PIP Corner)", "↙️ Kiri Bawah", "↘️ Kanan Bawah", "🖐️ Geser Bebas di Layar (Drag Sentuh Jari)")
+        AlertDialog.Builder(this)
+            .setTitle("📍 Posisikan Layer Overlay")
+            .setItems(positions) { _, which ->
+                when (which) {
+                    0 -> { overlay.x = 0.5f; overlay.y = 0.5f }
+                    1 -> { overlay.x = 0.25f; overlay.y = 0.25f }
+                    2 -> { overlay.x = 0.75f; overlay.y = 0.25f }
+                    3 -> { overlay.x = 0.25f; overlay.y = 0.75f }
+                    4 -> { overlay.x = 0.75f; overlay.y = 0.75f }
+                    5 -> {
+                        activeDragTarget = DragTarget.OVERLAY_MEDIA
+                        Toast.makeText(this, "Sentuh dan geser jari Anda pada layar preview untuk memindahkan overlay!", Toast.LENGTH_LONG).show()
+                        return@setItems
+                    }
+                }
+                activeDragTarget = DragTarget.OVERLAY_MEDIA
+                Toast.makeText(this, "Posisi diatur: ${positions[which]}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showOverlayRotationDialog(overlay: AeMediaOverlay) {
+        val rots = arrayOf("0° (Normal Tegak)", "90° (Putar Kanan)", "180° (Terbalik)", "270° (Putar Kiri)")
+        val rotVals = floatArrayOf(0f, 90f, 180f, 270f)
+        AlertDialog.Builder(this)
+            .setTitle("🔄 Putar Rotasi Media Overlay")
+            .setItems(rots) { _, which ->
+                overlay.rotation = rotVals[which]
+                Toast.makeText(this, "Rotasi overlay: ${rots[which]}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showOverlayBlendDialog(overlay: AeMediaOverlay) {
+        val modes = AeBlendMode.values()
+        AlertDialog.Builder(this)
+            .setTitle("🎨 Mode Blending Layer Overlay")
+            .setItems(modes.map { it.displayName }.toTypedArray()) { _, which ->
+                overlay.blendMode = modes[which]
+                Toast.makeText(this, "Blending mode: ${modes[which].displayName}", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showOverlayBorderCornerDialog(overlay: AeMediaOverlay) {
+        val options = arrayOf(
+            "Sudut Tajam (0px)",
+            "Sudut Melengkung Halus (16px)",
+            "Sudut Melengkung Bulat (32px)",
+            "Border Putih (3px)",
+            "Border Emas 24K (3px)",
+            "Border Neon Cyan (3px)",
+            "Hapus Garis Border"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("🖼️ Sudut Melengkung & Garis Border")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> overlay.cornerRadius = 0f
+                    1 -> overlay.cornerRadius = 16f
+                    2 -> overlay.cornerRadius = 32f
+                    3 -> { overlay.borderWidth = 3f; overlay.borderColor = Color.WHITE }
+                    4 -> { overlay.borderWidth = 3f; overlay.borderColor = Color.parseColor("#FFD700") }
+                    5 -> { overlay.borderWidth = 3f; overlay.borderColor = Color.parseColor("#06B6D4") }
+                    6 -> overlay.borderWidth = 0f
+                }
+                Toast.makeText(this, "Gaya tampilan diperbarui", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
     @SuppressLint("ClickableViewAccessibility")
     private fun setupTouchRepos() {
         binding.ivVfxPreview.setOnTouchListener { view, event ->
@@ -1519,10 +1975,25 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     if (vw > 0 && vh > 0) {
                         val normX = (event.x / vw).coerceIn(0.05f, 0.95f)
                         val normY = (event.y / vh).coerceIn(0.05f, 0.95f)
-                        if (activeDragTarget == DragTarget.STICKER && aeConfig.stickers.isNotEmpty()) {
+                        if (activeDragTarget == DragTarget.OVERLAY_MEDIA && aeConfig.mediaOverlays.isNotEmpty()) {
+                            val ov = aeConfig.mediaOverlays.last()
+                            ov.x = normX
+                            ov.y = normY
+                            updatePreview()
+                        } else if (activeDragTarget == DragTarget.STICKER && aeConfig.stickers.isNotEmpty()) {
                             val st = aeConfig.stickers.last()
                             st.x = normX
                             st.y = normY
+                            updatePreview()
+                        } else if (activeDragTarget == DragTarget.MOTION_TEXT && aeConfig.motionTexts.isNotEmpty()) {
+                            val txt = aeConfig.motionTexts.last()
+                            txt.x = normX
+                            txt.y = normY
+                            updatePreview()
+                        } else if (aeConfig.mediaOverlays.isNotEmpty()) {
+                            val ov = aeConfig.mediaOverlays.last()
+                            ov.x = normX
+                            ov.y = normY
                             updatePreview()
                         } else if (aeConfig.motionTexts.isNotEmpty()) {
                             val txt = aeConfig.motionTexts.last()
@@ -1573,6 +2044,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
 
         // Render on dedicated thread → post result back to main thread
         renderHandler.post {
+            updateVideoOverlayFrames(capturedConfig, capturedTimeMs)
             val output = AfterEffectsRenderer.renderFrame(base, capturedTimeMs, capturedConfig, reuseBuf)
             mainHandler.post {
                 if (bufIdx == 0) outputBitmapA = output else outputBitmapB = output
@@ -1670,6 +2142,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     val exportCfg = aeConfig.copy(isGuideGridEnabled = false)
                     for (i in 0 until totalFrames) {
                         val t = i * stepMs
+                        updateVideoOverlayFrames(exportCfg, t)
                         val rendered = AfterEffectsRenderer.renderFrame(base, t, exportCfg)
                         val scaled = if (resolution.width > 0 && resolution.width < 1000) {
                             val sc = resolution.width.toFloat() / rendered.width
@@ -1695,89 +2168,124 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                         binding.layoutVfxExportProgress.visibility = View.GONE
                         Toast.makeText(this@AfterEffectsStudioActivity, successMsg, Toast.LENGTH_LONG).show()
                     }
-                } else if (!isVideo) {
-                    // Photo base: Render full After Effects composition to MP4 video using hardware MediaCodec
-                    val width = if (resolution.width > 0) resolution.width else 1920
-                    val height = if (resolution.height > 0) resolution.height else 1080
-                    val fps = 30
-                    val totalFrames = ((durationMs / 1000f) * fps).toInt().coerceIn(15, 300)
-                    val stepMs = durationMs / totalFrames
-
-                    val mimeType = android.media.MediaFormat.MIMETYPE_VIDEO_AVC
-                    val codecFormat = android.media.MediaFormat.createVideoFormat(mimeType, width, height).apply {
-                        setInteger(android.media.MediaFormat.KEY_COLOR_FORMAT, android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-                        setInteger(android.media.MediaFormat.KEY_BIT_RATE, resolution.bitrateMbps * 1_000_000)
-                        setInteger(android.media.MediaFormat.KEY_FRAME_RATE, fps)
-                        setInteger(android.media.MediaFormat.KEY_I_FRAME_INTERVAL, 1)
-                    }
-
-                    val encoder = android.media.MediaCodec.createEncoderByType(mimeType)
-                    encoder.configure(codecFormat, null, null, android.media.MediaCodec.CONFIGURE_FLAG_ENCODE)
-                    val inputSurface = encoder.createInputSurface()
-                    encoder.start()
-
-                    val muxer = android.media.MediaMuxer(outputFile.absolutePath, android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
-                    var videoTrack = -1
-                    val bufferInfo = android.media.MediaCodec.BufferInfo()
-                    val destRect = android.graphics.Rect(0, 0, width, height)
-                    val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG)
-
-                    val exportCfg = aeConfig.copy(isGuideGridEnabled = false)
-                    for (f in 0 until totalFrames) {
-                        val t = f * stepMs
-                        val rendered = AfterEffectsRenderer.renderFrame(base, t, exportCfg)
-                        val canvas = inputSurface.lockCanvas(null)
-                        canvas.drawColor(Color.BLACK)
-                        canvas.drawBitmap(rendered, null, destRect, paint)
-                        inputSurface.unlockCanvasAndPost(canvas)
-
-                        drainCodec(encoder, muxer, bufferInfo, false) { track -> videoTrack = track }
-                        val pct = (f * 100 / totalFrames).coerceIn(0, 99)
-                        withContext(Dispatchers.Main) {
-                            binding.tvVfxProgressPercent.text = "Rendering VFX: $pct%"
-                        }
-                    }
-
-                    encoder.signalEndOfInputStream()
-                    drainCodec(encoder, muxer, bufferInfo, true) { track -> videoTrack = track }
-                    encoder.stop()
-                    encoder.release()
-                    inputSurface.release()
-                    if (videoTrack != -1) {
-                        muxer.stop()
-                    }
-                    muxer.release()
-
-                    StorageExportHelper.syncExportedFile(this@AfterEffectsStudioActivity, outputFile, format.mimeType)
-                    val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
-
-                    withContext(Dispatchers.Main) {
-                        binding.layoutVfxExportProgress.visibility = View.GONE
-                        Toast.makeText(this@AfterEffectsStudioActivity, successMsg, Toast.LENGTH_LONG).show()
-                    }
                 } else {
-                    // Export video format with hardware transformer
-                    withContext(Dispatchers.Main) {
-                        VideoEffectTransformer.transformVideo(
-                            context = this@AfterEffectsStudioActivity,
-                            inputUri = uri,
-                            outputFile = outputFile,
-                            resolution = resolution,
-                            exportFormat = format
-                        ).collectLatest { state ->
-                            when (state) {
-                                is VideoEffectTransformer.TransformState.Progress -> {
-                                    binding.tvVfxProgressPercent.text = "Exporting VFX: ${state.percentage}%"
-                                }
-                                is VideoEffectTransformer.TransformState.Success -> {
-                                    StorageExportHelper.syncExportedFile(this@AfterEffectsStudioActivity, outputFile, format.mimeType)
-                                    val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
-                                    binding.layoutVfxExportProgress.visibility = View.GONE
-                                    Toast.makeText(this@AfterEffectsStudioActivity, successMsg, Toast.LENGTH_LONG).show()
-                                }
-                                is VideoEffectTransformer.TransformState.Error -> {
-                                    binding.layoutVfxExportProgress.visibility = View.GONE
-                                    Toast.makeText(this@AfterEffectsStudioActivity, "Gagal export: ${state.message}", Toast.LENGTH_LONG).show()
+                    val hasActiveVfx = aeConfig.mediaOverlays.isNotEmpty() ||
+                            aeConfig.motionTexts.isNotEmpty() ||
+                            aeConfig.stickers.isNotEmpty() ||
+                            aeConfig.activeParticleType != null ||
+                            aeConfig.isOpticalGlowEnabled ||
+                            aeConfig.isRgbGlitchEnabled ||
+                            aeConfig.isWiggleEnabled ||
+                            aeConfig.isLensFlareEnabled ||
+                            aeConfig.isLightRaysEnabled ||
+                            aeConfig.isTurbulentDisplaceEnabled ||
+                            aeConfig.isZoomBlurEnabled ||
+                            aeConfig.isSaberEdgeEnabled ||
+                            aeConfig.lumetriPreset != "NONE" ||
+                            aeConfig.isFilmGrainEnabled ||
+                            aeConfig.is3DLayerEnabled ||
+                            aeConfig.mask.isEnabled ||
+                            aeConfig.isUnmultEnabled ||
+                            aeConfig.isContourPaintEnabled ||
+                            aeConfig.isCurlNoiseEnabled ||
+                            aeConfig.isDepthOfFieldEnabled
+
+                    if (!isVideo || hasActiveVfx) {
+                        // Render full After Effects composition (with Overlays, Text, Particles, VFX) using hardware MediaCodec
+                        val width = if (resolution.width > 0) resolution.width else 1920
+                        val height = if (resolution.height > 0) resolution.height else 1080
+                        val fps = 30
+                        val totalFrames = ((durationMs / 1000f) * fps).toInt().coerceIn(15, 600)
+                        val stepMs = durationMs / totalFrames
+
+                        val mimeType = android.media.MediaFormat.MIMETYPE_VIDEO_AVC
+                        val codecFormat = android.media.MediaFormat.createVideoFormat(mimeType, width, height).apply {
+                            setInteger(android.media.MediaFormat.KEY_COLOR_FORMAT, android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
+                            setInteger(android.media.MediaFormat.KEY_BIT_RATE, resolution.bitrateMbps * 1_000_000)
+                            setInteger(android.media.MediaFormat.KEY_FRAME_RATE, fps)
+                            setInteger(android.media.MediaFormat.KEY_I_FRAME_INTERVAL, 1)
+                        }
+
+                        val encoder = android.media.MediaCodec.createEncoderByType(mimeType)
+                        encoder.configure(codecFormat, null, null, android.media.MediaCodec.CONFIGURE_FLAG_ENCODE)
+                        val inputSurface = encoder.createInputSurface()
+                        encoder.start()
+
+                        val muxer = android.media.MediaMuxer(outputFile.absolutePath, android.media.MediaMuxer.OutputFormat.MUXER_OUTPUT_MPEG_4)
+                        var videoTrack = -1
+                        val bufferInfo = android.media.MediaCodec.BufferInfo()
+                        val destRect = android.graphics.Rect(0, 0, width, height)
+                        val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG)
+
+                        val videoRetriever = if (isVideo) {
+                            MediaMetadataRetriever().apply { setDataSource(this@AfterEffectsStudioActivity, uri) }
+                        } else null
+
+                        val exportCfg = aeConfig.copy(isGuideGridEnabled = false)
+                        for (f in 0 until totalFrames) {
+                            val t = f * stepMs
+                            val currentBase = if (videoRetriever != null) {
+                                videoRetriever.getFrameAtTime(t * 1000L, MediaMetadataRetriever.OPTION_CLOSEST) ?: base
+                            } else {
+                                base
+                            }
+                            updateVideoOverlayFrames(exportCfg, t)
+                            val rendered = AfterEffectsRenderer.renderFrame(currentBase, t, exportCfg)
+                            val canvas = inputSurface.lockCanvas(null)
+                            canvas.drawColor(Color.BLACK)
+                            canvas.drawBitmap(rendered, null, destRect, paint)
+                            inputSurface.unlockCanvasAndPost(canvas)
+
+                            drainCodec(encoder, muxer, bufferInfo, false) { track -> videoTrack = track }
+                            val pct = (f * 100 / totalFrames).coerceIn(0, 99)
+                            withContext(Dispatchers.Main) {
+                                binding.tvVfxProgressPercent.text = "Rendering VFX & Overlay: $pct%"
+                            }
+                        }
+
+                        videoRetriever?.release()
+
+                        encoder.signalEndOfInputStream()
+                        drainCodec(encoder, muxer, bufferInfo, true) { track -> videoTrack = track }
+                        encoder.stop()
+                        encoder.release()
+                        inputSurface.release()
+                        if (videoTrack != -1) {
+                            muxer.stop()
+                        }
+                        muxer.release()
+
+                        StorageExportHelper.syncExportedFile(this@AfterEffectsStudioActivity, outputFile, format.mimeType)
+                        val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
+
+                        withContext(Dispatchers.Main) {
+                            binding.layoutVfxExportProgress.visibility = View.GONE
+                            Toast.makeText(this@AfterEffectsStudioActivity, successMsg, Toast.LENGTH_LONG).show()
+                        }
+                    } else {
+                        // Export video format with hardware transformer (plain passthrough)
+                        withContext(Dispatchers.Main) {
+                            VideoEffectTransformer.transformVideo(
+                                context = this@AfterEffectsStudioActivity,
+                                inputUri = uri,
+                                outputFile = outputFile,
+                                resolution = resolution,
+                                exportFormat = format
+                            ).collectLatest { state ->
+                                when (state) {
+                                    is VideoEffectTransformer.TransformState.Progress -> {
+                                        binding.tvVfxProgressPercent.text = "Exporting Video: ${state.percentage}%"
+                                    }
+                                    is VideoEffectTransformer.TransformState.Success -> {
+                                        StorageExportHelper.syncExportedFile(this@AfterEffectsStudioActivity, outputFile, format.mimeType)
+                                        val successMsg = StorageExportHelper.getSuccessNotificationMessage(outputFile.name)
+                                        binding.layoutVfxExportProgress.visibility = View.GONE
+                                        Toast.makeText(this@AfterEffectsStudioActivity, successMsg, Toast.LENGTH_LONG).show()
+                                    }
+                                    is VideoEffectTransformer.TransformState.Error -> {
+                                        binding.layoutVfxExportProgress.visibility = View.GONE
+                                        Toast.makeText(this@AfterEffectsStudioActivity, "Gagal export: ${state.message}", Toast.LENGTH_LONG).show()
+                                    }
                                 }
                             }
                         }
@@ -1848,6 +2356,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             "🔤 Motion Text Animasi",
             "✨ Huruf Timbul 3D, Kilauan Shimmer & Bintang Teks",
             "🎉 Stiker Animasi Giphy/PNG",
+            "🖼️ Tumpuk Video / Foto (Overlay, PIP & Transisi)",
             "🎵 Audio Waveform / Spectrum React",
             "🎭 Blending Modes (Add, Screen, dll)",
             "⬛ Unmult Alpha Keyer (Hapus Latar Hitam/Putih)",
@@ -1878,15 +2387,16 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     12 -> showMotionTextDialog()
                     13 -> showTextStyleDialog()
                     14 -> showStickerDialog()
-                    15 -> binding.btnVfxAudioSpectrum.performClick()
-                    16 -> showBlendModeDialog()
-                    17 -> showUnmultDialog()
-                    18 -> showContourDialog()
-                    19 -> showCurlNoiseDialog()
-                    20 -> showDepthOfFieldDialog()
-                    21 -> showGuidesDialog()
-                    22 -> takeSnapshot()
-                    23 -> showCompSettingsDialog()
+                    15 -> binding.btnVfxOverlay.performClick()
+                    16 -> binding.btnVfxAudioSpectrum.performClick()
+                    17 -> showBlendModeDialog()
+                    18 -> showUnmultDialog()
+                    19 -> showContourDialog()
+                    20 -> showCurlNoiseDialog()
+                    21 -> showDepthOfFieldDialog()
+                    22 -> showGuidesDialog()
+                    23 -> takeSnapshot()
+                    24 -> showCompSettingsDialog()
                 }
             }
             .setNegativeButton("Tutup", null)
@@ -2158,6 +2668,14 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             mediaPlayer = null
         } catch (e: Exception) {
             e.printStackTrace()
+        }
+        for (ret in overlayRetrievers.values) {
+            try { ret.release() } catch (_: Exception) {}
+        }
+        overlayRetrievers.clear()
+        for (ov in aeConfig.mediaOverlays) {
+            try { ov.cachedBitmap?.recycle() } catch (_: Exception) {}
+            ov.cachedBitmap = null
         }
         videoSurface?.release()
         videoSurface = null

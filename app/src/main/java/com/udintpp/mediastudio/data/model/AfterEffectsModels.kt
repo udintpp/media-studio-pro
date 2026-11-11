@@ -263,6 +263,54 @@ data class AeSticker(
     var animationType: String = "PULSE" // "NONE", "PULSE", "BOUNCE", "SPIN", "WOBBLE", "FLOAT"
 )
 
+enum class AeOverlayMediaType {
+    IMAGE, VIDEO
+}
+
+enum class AeOverlayTransition(val displayName: String) {
+    NONE("Langsung (Cut / No Transition)"),
+    FADE("Fade In / Out (Dissolve Halus)"),
+    ZOOM("Zoom Pop (Membesar & Mengecil)"),
+    SLIDE_LEFT("Slide Kiri (Meluncur dari Kanan)"),
+    SLIDE_RIGHT("Slide Kanan (Meluncur dari Kiri)"),
+    SLIDE_UP("Slide Atas (Meluncur dari Bawah)"),
+    SLIDE_DOWN("Slide Bawah (Meluncur dari Atas)"),
+    SPIN("Spin 360° (Berputar Masuk/Keluar)"),
+    BOUNCE("Bounce (Membal Pegas Elastis)")
+}
+
+data class AeMediaOverlay(
+    val id: String = java.util.UUID.randomUUID().toString(),
+    var uriString: String = "",
+    var mediaType: AeOverlayMediaType = AeOverlayMediaType.IMAGE,
+    var name: String = "Media Overlay",
+    // Position & Transform (0.0 to 1.0 normalized coordinates)
+    var x: Float = 0.5f,
+    var y: Float = 0.5f,
+    // Scale: 0.1x to 3.0x
+    var scale: Float = 0.6f,
+    // Rotation in degrees
+    var rotation: Float = 0f,
+    // Intensity / Opacity (0.0 to 1.0)
+    var opacity: Float = 1.0f,
+    // Duration Adjustment (Batas Awal & Batas Akhir tampil dalam milidetik)
+    var startTimeMs: Long = 0L,
+    var endTimeMs: Long = 5000L,
+    // Transition Mode & Duration
+    var transition: AeOverlayTransition = AeOverlayTransition.FADE,
+    var transitionDurationMs: Long = 500L,
+    // Blend Mode (Normal, Screen, Add, Multiply, Overlay)
+    var blendMode: AeBlendMode = AeBlendMode.NORMAL,
+    // Corner Radius & Border
+    var cornerRadius: Float = 16f,
+    var borderWidth: Float = 0f,
+    var borderColor: Int = Color.WHITE,
+    // Transient properties for frame caching
+    @Transient var cachedBitmap: android.graphics.Bitmap? = null,
+    @Transient var videoDurationMs: Long = 0L,
+    @Transient var lastExtractedTimeMs: Long = -1L
+)
+
 data class AeConfig(
     // Composition Settings (Custom Durasi, Resolusi & Rasio)
     var compDurationMs: Long = 5000L,
@@ -358,6 +406,9 @@ data class AeConfig(
 
     // Stickers
     val stickers: MutableList<AeSticker> = mutableListOf(),
+
+    // Menumpuk Video & Foto (Media Overlay / PIP Track)
+    val mediaOverlays: MutableList<AeMediaOverlay> = mutableListOf(),
 
     // Official Adobe After Effects New Features
     var isUnmultEnabled: Boolean = false,

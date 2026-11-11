@@ -47,16 +47,64 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.5.5
-          name: "MediaStudio Pro v1.5.5 - Animasi Super Halus 60fps, Rendering Async, Partikel Lebih Mulus"
+          tag_name: v1.5.6
+          name: "MediaStudio Pro v1.5.6 - Menumpuk Video/Foto (PIP Overlay), Skala, Intensitas, Durasi & 9 Mode Transisi"
           body: |
-            ## 🎬 MediaStudio Pro v1.5.5 - Smooth 60fps Preview & Rendering Engine Upgrade
+            ## 🖼️ MediaStudio Pro v1.5.6 - Video & Photo Overlay (PIP), Scale, Intensity, Duration & 9 Transition Modes
 
-            Pembaruan **v1.5.5** berfokus sepenuhnya pada peningkatan kelancaran animasi, preview, dan pergerakan efek partikel — tidak ada lagi gerakan patah-patah atau nyendat.
+            Pembaruan **v1.5.6** menghadirkan fitur **Menumpuk Video atau Foto (Media Overlay / PIP Track)** lengkap dengan kustomisasi skala ukuran, intensitas/opasitas, batas durasi awal & akhir, serta 9 pilihan mode transisi masuk & keluar:
 
             ---
 
-            ### 🚀 Peningkatan di v1.5.5:
+            ### 🚀 Fitur Baru & Peningkatan di v1.5.6:
+
+            1. 🖼️ **Menumpuk Video atau Foto (Media Overlay / PIP Layer):**
+               - Tambahkan foto atau video dari galeri untuk ditumpuk di atas komposisi video atau foto utama.
+               - Mendukung multi-layer overlay dengan preview instan dan posisi bebas.
+
+            2. 🔍 **Pengaturan Skala Ukuran (Scale):**
+               - Preset cepat: **25% (Kecil PIP Sudut)**, **50% (Separuh Layar)**, **75%**, **100% (Ukuran Asli)**, **125%**, dan **150% (Zoom Maksimal)**.
+               - Dilengkapi slider real-time di bilah bawah untuk penyesuaian skala halus bebas dari 0.1x hingga 3.0x.
+
+            3. 🎛️ **Pengaturan Intensitas / Opasitas Transparansi:**
+               - Atur tingkat transparansi media tumpukan: **100% Solid**, **80%**, **60%**, **40%**, hingga **20% (Bayangan Lembut / Watermark)**.
+               - Slider opasitas presisi 0% s/d 100%.
+
+            4. ⏱️ **Penyesuaian Durasi Tampil (Batas Awal & Batas Akhir):**
+               - **Jadikan Waktu Saat Ini Sebagai Batas Awal (In-Point):** Tentukan tepat detik ke berapa video/foto overlay mulai muncul.
+               - **Jadikan Waktu Saat Ini Sebagai Batas Akhir (Out-Point):** Tentukan tepat detik ke berapa overlay selesai dan menghilang.
+               - **Input Manual Detik:** Masukkan detik desimal presisi (contoh: mulai detik 1.5 s/d 6.0).
+               - **Tampilkan Penuh:** Opsi tampil sepanjang durasi komposisi.
+
+            5. 🎭 **9 Pilihan Mode Transisi Masuk & Keluar:**
+               - **Langsung (Cut / No Transition):** Muncul dan menghilang seketika tanpa efek transisi.
+               - **Fade In / Out (Dissolve Halus):** Masuk dan keluar dengan pendaran opasitas halus (smoothstep curve).
+               - **Zoom Pop (Membesar & Mengecil):** Membesar membal saat masuk lalu mengecil halus saat keluar.
+               - **Slide Kiri (Meluncur dari Kanan):** Animasi meluncur horizontal masuk dari sisi kanan.
+               - **Slide Kanan (Meluncur dari Kiri):** Animasi meluncur horizontal masuk dari sisi kiri.
+               - **Slide Atas (Meluncur dari Bawah):** Animasi meluncur vertikal naik dari bawah layar.
+               - **Slide Bawah (Meluncur dari Atas):** Animasi meluncur vertikal turun dari atas layar.
+               - **Spin 360° (Berputar Masuk & Keluar):** Berputar 360 derajat sambil membesar saat masuk.
+               - **Bounce (Membal Pegas Elastis):** Efek animasi pegas dengan overshoot dinamis.
+
+            6. ⏳ **Pengaturan Durasi Transisi:**
+               - Pilihan kecepatan transisi: **200ms (Cepat)**, **500ms (Standar Halus)**, **1000ms (1 Detik Sinematik)**, **1500ms**, dan **2000ms (Sangat Lembut)**.
+
+            7. 🖐️ **Reposisi Bebas Touch Drag di Layar Preview:**
+               - Sentuh dan geser jari Anda langsung di atas layar preview untuk memindahkan posisi overlay ke koordinat mana pun secara bebas dan presisi.
+               - Preset posisi cepat: Tengah Layar, Kiri-Atas (PIP Corner), Kanan-Atas, Kiri-Bawah, dan Kanan-Bawah.
+
+            8. 🔄 **Rotasi, Sudut Melengkung & Garis Border:**
+               - Putar rotasi 0°, 90°, 180°, atau 270°.
+               - Sudut melengkung (Corner Radius 16px / 32px) untuk tampilan kartu modern.
+               - Pilihan garis tepi border: Putih Bersih, Emas 24K, Neon Cyan, atau Tanpa Border.
+
+            9. 🎨 **Layer Blending Mode untuk Overlay:**
+               - Normal, Add (Linear Dodge), Screen, Multiply, Overlay.
+
+            10. 🎬 **Export MediaCodec Hardware & GIF:**
+                - Render frame-by-frame dengan sinkronisasi frame video overlay, transisi halus, dan waktu batas awal/akhir yang akurat pada hasil export MP4 maupun GIF.
+                - Hasil export tersimpan langsung di `/storage/emulated/0/DCIM/video-pro/`.
 
             1. 🧵 **Dedicated Render Thread (60fps Smooth Preview):**
                - Engine render efek kini berjalan di **background HandlerThread** terpisah, sehingga main UI thread selalu bebas untuk input sentuh dan navigasi.

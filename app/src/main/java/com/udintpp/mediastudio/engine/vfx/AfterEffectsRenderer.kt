@@ -24,7 +24,9 @@ import com.udintpp.mediastudio.data.model.AeEffectType
 import com.udintpp.mediastudio.data.model.AeKeyframe
 import com.udintpp.mediastudio.data.model.AeMask
 import com.udintpp.mediastudio.data.model.AeMaskShape
+import com.udintpp.mediastudio.data.model.AeMediaOverlay
 import com.udintpp.mediastudio.data.model.AeMotionText
+import com.udintpp.mediastudio.data.model.AeOverlayTransition
 import com.udintpp.mediastudio.data.model.AeSticker
 import java.util.Random
 import kotlin.math.abs
@@ -170,6 +172,13 @@ object AfterEffectsRenderer {
         // 14. Animated Stickers & Emoji Overlays
         for (sticker in config.stickers) {
             renderSticker(canvas, w, h, timeMs, sticker, config.effectSpeed)
+        }
+
+        // 14b. Menumpuk Video atau Foto (Media Overlay Layers with Scale, Intensity, Duration & Transitions)
+        for (overlay in config.mediaOverlays) {
+            if (timeMs in overlay.startTimeMs..overlay.endTimeMs) {
+                renderMediaOverlay(canvas, w, h, timeMs, overlay)
+            }
         }
 
         // 15. Unmult Alpha Keyer (Black/White Background Removal)
@@ -1476,6 +1485,186 @@ object AfterEffectsRenderer {
             alpha = (sticker.opacity * 255).toInt().coerceIn(0, 255)
         }
         canvas.drawText(sticker.content, 0f, 24f, stickerPaint)
+        canvas.restore()
+    }
+
+    // --- 10b. Menumpuk Video atau Foto (Media Overlay / PIP Engine) ---
+    private fun renderMediaOverlay(
+        canvas: Canvas,
+        w: Int,
+        h: Int,
+        timeMs: Long,
+        overlay: AeMediaOverlay
+    ) {
+        val bmp = overlay.cachedBitmap ?: return
+        if (bmp.isRecycled) return
+
+        // 1. Duration bounds & Transition Progress calculation
+        val inElapsed = (timeMs - overlay.startTimeMs).coerceAtLeast(0L)
+        val outRemaining = (overlay.endTimeMs - timeMs).coerceAtLeast(0L)
+        val tDur = overlay.transitionDurationMs.coerceAtLeast(50L).toFloat()
+
+        var curOpacity = overlay.opacity.coerceIn(0f, 1f)
+        var curScale = overlay.scale.coerceIn(0.05f, 5.0f)
+        var curRot = overlay.rotation
+        var offsetX = 0f
+        var offsetY = 0f
+
+        when (overlay.transition) {
+            AeOverlayTransition.NONE -> {
+                // Hard cut, no transition effect
+            }
+            AeOverlayTransition.FADE -> {
+                if (inElapsed < tDur) {
+                    val p = (inElapsed / tDur).coerceIn(0f, 1f)
+                    curOpacity *= smoothstep(0f, 1f, p)
+                } else if (outRemaining < tDur) {
+                    val p = (outRemaining / tDur).coerceIn(0f, 1f)
+                    curOpacity *= smoothstep(0f, 1f, p)
+                }
+            }
+            AeOverlayTransition.ZOOM -> {
+                if (inElapsed < tDur) {
+                    val p = (inElapsed / tDur).coerceIn(0f, 1f)
+                    val s = smoothstep(0f, 1f, p)
+                    curScale *= s
+                    curOpacity *= s
+                } else if (outRemaining < tDur) {
+                    val p = (outRemaining / tDur).coerceIn(0f, 1f)
+                    val s = smoothstep(0f, 1f, p)
+                    curScale *= s
+                    curOpacity *= s
+                }
+            }
+            AeOverlayTransition.SLIDE_LEFT -> {
+                if (inElapsed < tDur) {
+                    val p = 1f - smoothstep(0f, 1f, (inElapsed / tDur).coerceIn(0f, 1f))
+                    offsetX += p * w * 0.75f
+                    curOpacity *= (1f - p * 0.5f)
+                } else if (outRemaining < tDur) {
+                    val p = 1f - smoothstep(0f, 1f, (outRemaining / tDur).coerceIn(0f, 1f))
+                    offsetX -= p * w * 0.75f
+                    curOpacity *= (1f - p * 0.5f)
+                }
+            }
+            AeOverlayTransition.SLIDE_RIGHT -> {
+                if (inElapsed < tDur) {
+                    val p = 1f - smoothstep(0f, 1f, (inElapsed / tDur).coerceIn(0f, 1f))
+                    offsetX -= p * w * 0.75f
+                    curOpacity *= (1f - p * 0.5f)
+                } else if (outRemaining < tDur) {
+                    val p = 1f - smoothstep(0f, 1f, (outRemaining / tDur).coerceIn(0f, 1f))
+                    offsetX += p * w * 0.75f
+                    curOpacity *= (1f - p * 0.5f)
+                }
+            }
+            AeOverlayTransition.SLIDE_UP -> {
+                if (inElapsed < tDur) {
+                    val p = 1f - smoothstep(0f, 1f, (inElapsed / tDur).coerceIn(0f, 1f))
+                    offsetY += p * h * 0.75f
+                    curOpacity *= (1f - p * 0.5f)
+                } else if (outRemaining < tDur) {
+                    val p = 1f - smoothstep(0f, 1f, (outRemaining / tDur).coerceIn(0f, 1f))
+                    offsetY -= p * h * 0.75f
+                    curOpacity *= (1f - p * 0.5f)
+                }
+            }
+            AeOverlayTransition.SLIDE_DOWN -> {
+                if (inElapsed < tDur) {
+                    val p = 1f - smoothstep(0f, 1f, (inElapsed / tDur).coerceIn(0f, 1f))
+                    offsetY -= p * h * 0.75f
+                    curOpacity *= (1f - p * 0.5f)
+                } else if (outRemaining < tDur) {
+                    val p = 1f - smoothstep(0f, 1f, (outRemaining / tDur).coerceIn(0f, 1f))
+                    offsetY += p * h * 0.75f
+                    curOpacity *= (1f - p * 0.5f)
+                }
+            }
+            AeOverlayTransition.SPIN -> {
+                if (inElapsed < tDur) {
+                    val p = (inElapsed / tDur).coerceIn(0f, 1f)
+                    val s = smoothstep(0f, 1f, p)
+                    curRot += (1f - s) * 360f
+                    curScale *= s
+                    curOpacity *= s
+                } else if (outRemaining < tDur) {
+                    val p = (outRemaining / tDur).coerceIn(0f, 1f)
+                    val s = smoothstep(0f, 1f, p)
+                    curRot -= (1f - s) * 360f
+                    curScale *= s
+                    curOpacity *= s
+                }
+            }
+            AeOverlayTransition.BOUNCE -> {
+                if (inElapsed < tDur) {
+                    val t = (inElapsed / tDur).coerceIn(0f, 1f)
+                    val bounce = if (t < 0.6f) {
+                        (t / 0.6f) * 1.15f
+                    } else {
+                        1.15f - ((t - 0.6f) / 0.4f) * 0.15f
+                    }
+                    curScale *= bounce
+                    curOpacity *= t
+                } else if (outRemaining < tDur) {
+                    val t = (outRemaining / tDur).coerceIn(0f, 1f)
+                    curScale *= t
+                    curOpacity *= t
+                }
+            }
+        }
+
+        if (curOpacity <= 0.005f || curScale <= 0.005f) return
+
+        // 2. Position on composition canvas
+        val px = w * overlay.x + offsetX
+        val py = h * overlay.y + offsetY
+
+        // 3. Render on canvas with scale, rotation, rounded corners, and border
+        canvas.save()
+        canvas.translate(px, py)
+        canvas.rotate(curRot)
+        canvas.scale(curScale, curScale)
+
+        val bmpW = bmp.width.toFloat()
+        val bmpH = bmp.height.toFloat()
+        val left = -bmpW / 2f
+        val top = -bmpH / 2f
+        val right = bmpW / 2f
+        val bottom = bmpH / 2f
+        val rect = RectF(left, top, right, bottom)
+
+        val overlayPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            alpha = (curOpacity * 255).toInt().coerceIn(0, 255)
+            xfermode = PorterDuffXfermode(overlay.blendMode.porterDuffMode)
+        }
+
+        if (overlay.cornerRadius > 0f) {
+            val path = Path().apply {
+                addRoundRect(rect, overlay.cornerRadius, overlay.cornerRadius, Path.Direction.CW)
+            }
+            canvas.save()
+            canvas.clipPath(path)
+            canvas.drawBitmap(bmp, left, top, overlayPaint)
+            canvas.restore()
+        } else {
+            canvas.drawBitmap(bmp, left, top, overlayPaint)
+        }
+
+        // Draw border if set
+        if (overlay.borderWidth > 0f) {
+            val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                style = Paint.Style.STROKE
+                strokeWidth = overlay.borderWidth
+                color = overlay.borderColor
+                alpha = (curOpacity * 255).toInt().coerceIn(0, 255)
+            }
+            if (overlay.cornerRadius > 0f) {
+                canvas.drawRoundRect(rect, overlay.cornerRadius, overlay.cornerRadius, borderPaint)
+            } else {
+                canvas.drawRect(rect, borderPaint)
+            }
+        }
+
         canvas.restore()
     }
 

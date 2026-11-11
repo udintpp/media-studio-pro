@@ -518,6 +518,16 @@
                     android:textSize="11sp" />
 
                 <Button
+                    android:id="@+id/btn_vfx_overlay"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🖼️ Tumpuk Video/Foto"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="11sp" />
+
+                <Button
                     android:id="@+id/btn_vfx_audio_spectrum"
                     style="@style/Widget.Material3.Button.TonalButton"
                     android:layout_width="wrap_content"
