@@ -17,6 +17,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
+import android.os.Handler
+import android.os.HandlerThread
 import android.view.Gravity
 import android.view.Surface
 import android.view.TextureView
@@ -53,6 +55,7 @@ import java.io.FileOutputStream
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.math.max
 import kotlin.math.min
 
@@ -75,6 +78,12 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     private var rawVideoWidth = 1280
     private var rawVideoHeight = 720
     private var videoRotation = 0
+
+    // Dedicated background render thread — keeps main thread free for UI input at 60fps
+    private val renderThread = HandlerThread("AeRenderThread").also { it.start() }
+    private val renderHandler = Handler(renderThread.looper)
+    private val mainHandler = Handler(android.os.Looper.getMainLooper())
+    private val isRenderPending = AtomicBoolean(false)
 
     // Double-buffering for silky-smooth, zero-GC 60fps rendering
     private var videoFrameBitmap: Bitmap? = null
@@ -224,9 +233,8 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         if (!isVideo) return
 
         val now = System.currentTimeMillis()
-        if (now - lastPreviewUpdateMs < 30L && isPlaying) {
-            return
-        }
+        // 16ms = ~60fps cap; skip only if we're already rendering a pending frame
+        if (now - lastPreviewUpdateMs < 16L && isPlaying) return
         lastPreviewUpdateMs = now
 
         currentTimeMs = mp.currentPosition.toLong()
@@ -237,6 +245,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         val vh = binding.textureVideoSource.height
         if (vw <= 0 || vh <= 0) return
 
+        // Downscale for smooth 60fps preview (960px wide max)
         val scale = if (vw > 960) 960f / vw else 1.0f
         val targetW = (vw * scale).toInt().coerceAtLeast(100)
         val targetH = (vh * scale).toInt().coerceAtLeast(100)
@@ -246,16 +255,28 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             videoFrameBitmap = Bitmap.createBitmap(targetW, targetH, Bitmap.Config.ARGB_8888)
         }
 
+        // Capture current video frame while still on main thread (TextureView requirement)
         binding.textureVideoSource.getBitmap(videoFrameBitmap!!)
         baseBitmap = videoFrameBitmap
 
-        val targetBuf = if (activeBufferIndex == 0) outputBitmapA else outputBitmapB
-        val output = AfterEffectsRenderer.renderFrame(videoFrameBitmap!!, currentTimeMs, aeConfig, targetBuf)
-        if (activeBufferIndex == 0) outputBitmapA = output else outputBitmapB = output
-        activeBufferIndex = 1 - activeBufferIndex
+        // Skip queuing new render if one is already in-flight (prevents render backpressure)
+        if (!isRenderPending.compareAndSet(false, true)) return
 
-        binding.ivVfxPreview.setImageBitmap(output)
-        binding.ivVfxPreview.invalidate()
+        val frameCopy = videoFrameBitmap!!
+        val capturedTimeMs = currentTimeMs
+        val capturedConfig = aeConfig.copy()
+        val bufIdx = activeBufferIndex
+        val reuseBuf = if (bufIdx == 0) outputBitmapA else outputBitmapB
+
+        renderHandler.post {
+            val output = AfterEffectsRenderer.renderFrame(frameCopy, capturedTimeMs, capturedConfig, reuseBuf)
+            isRenderPending.set(false)
+            mainHandler.post {
+                if (bufIdx == 0) outputBitmapA = output else outputBitmapB = output
+                activeBufferIndex = 1 - bufIdx
+                binding.ivVfxPreview.setImageBitmap(output)
+            }
+        }
     }
 
     private fun loadMedia(uri: Uri) {
@@ -1540,14 +1561,25 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     }
 
     private fun updatePreview() {
-        val base = videoFrameBitmap ?: baseBitmap ?: return
-        val targetBuf = if (activeBufferIndex == 0) outputBitmapA else outputBitmapB
-        val rendered = AfterEffectsRenderer.renderFrame(base, currentTimeMs, aeConfig, targetBuf)
-        if (activeBufferIndex == 0) outputBitmapA = rendered else outputBitmapB = rendered
-        activeBufferIndex = 1 - activeBufferIndex
+        val base = (videoFrameBitmap ?: baseBitmap)?.let {
+            // Safe copy reference — render will use this immutable bitmap
+            it
+        } ?: return
 
-        binding.ivVfxPreview.setImageBitmap(rendered)
-        binding.ivVfxPreview.invalidate()
+        val capturedTimeMs = currentTimeMs
+        val capturedConfig = aeConfig.copy()
+        val bufIdx = activeBufferIndex
+        val reuseBuf = if (bufIdx == 0) outputBitmapA else outputBitmapB
+
+        // Render on dedicated thread → post result back to main thread
+        renderHandler.post {
+            val output = AfterEffectsRenderer.renderFrame(base, capturedTimeMs, capturedConfig, reuseBuf)
+            mainHandler.post {
+                if (bufIdx == 0) outputBitmapA = output else outputBitmapB = output
+                activeBufferIndex = 1 - bufIdx
+                binding.ivVfxPreview.setImageBitmap(output)
+            }
+        }
     }
 
     private fun startPlayback() {
@@ -1573,12 +1605,17 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             timelineAnimator = ValueAnimator.ofInt(currentTimeMs.toInt(), durationMs.toInt()).apply {
                 duration = ((durationMs - currentTimeMs) / aeConfig.effectSpeed).toLong().coerceAtLeast(100L)
                 interpolator = LinearInterpolator()
+                // Lock animator to 60fps update rate — prevents flooding renderHandler faster than GPU can consume
+                setEvaluator(android.animation.IntEvaluator())
                 addUpdateListener { anim ->
                     val p = anim.animatedValue as Int
                     currentTimeMs = p.toLong()
                     binding.seekbarTimeline.progress = p
                     binding.tvTimelineTime.text = "${formatTime(currentTimeMs)} / ${formatTime(durationMs)}"
-                    updatePreview()
+                    // Only queue new render if previous one has completed (backpressure guard)
+                    if (!isRenderPending.get()) {
+                        updatePreview()
+                    }
                 }
                 start()
             }
@@ -2112,6 +2149,9 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     override fun onDestroy() {
         super.onDestroy()
         pausePlayback()
+        // Stop background render thread first to prevent in-flight renders accessing recycled bitmaps
+        renderHandler.removeCallbacksAndMessages(null)
+        renderThread.quitSafely()
         try {
             mediaPlayer?.stop()
             mediaPlayer?.release()

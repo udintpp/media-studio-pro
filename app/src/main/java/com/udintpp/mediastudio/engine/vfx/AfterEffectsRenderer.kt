@@ -37,6 +37,12 @@ object AfterEffectsRenderer {
 
     private val random = Random()
 
+    /** Cubic Hermite smoothstep for ultra-smooth interpolation (no abrupt edges) */
+    private fun smoothstep(edge0: Float, edge1: Float, x: Float): Float {
+        val t = ((x - edge0) / (edge1 - edge0)).coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
+    }
+
     /**
      * Renders all active Adobe After Effects visual effects, keyframe transformations,
      * 3D perspective layers, shape masking, particle simulations, optical glow,
@@ -606,6 +612,7 @@ object AfterEffectsRenderer {
         val globalSpeed = config.particleSpeed * config.effectSpeed
         val baseSize = config.particleSize
         val turbulence = config.particleTurbulence.coerceIn(0f, 3.5f)
+        // Cache Paint outside loop — avoids GC pressure from creating 300 objects per frame
         val pPaint = Paint(Paint.ANTI_ALIAS_FLAG)
 
         for (i in 0 until count) {
@@ -619,14 +626,15 @@ object AfterEffectsRenderer {
             val indivSize = (0.6f + hash1 * 0.8f) * baseSize
             val t = (timeMs / 1000f) * indivSpeed
 
-            // Natural individual lifecycle & fading (smooth sinusoidal breath)
+            // Natural individual lifecycle & fading — smoothstep for ultra-smooth in/out
             val cycleSec = 3.2f / indivSpeed.coerceAtLeast(0.2f)
             val phase = ((t + hash1 * cycleSec) % cycleSec) / cycleSec
-            val fadeInOut = sin(phase * Math.PI).toFloat().coerceIn(0f, 1f)
+            // Smoothstep replaces raw sin: eliminates abrupt jumps at cycle boundaries
+            val fadeInOut = smoothstep(0f, 0.2f, phase) * (1f - smoothstep(0.75f, 1f, phase))
 
-            // Twinkle pulsation
+            // Twinkle pulsation — smooth cosine-based, no hard clipping
             val twinkleFreq = config.particleTwinkleRate * (2.0f + hash0 * 3.5f)
-            val twinkle = (sin(t * twinkleFreq + hash2 * 6.28f) * 0.35f + 0.65f).toFloat().coerceIn(0.1f, 1f)
+            val twinkle = (cos(t * twinkleFreq + hash2 * 6.28f) * 0.3f + 0.7f).toFloat().coerceIn(0.1f, 1f)
             val curAlpha = (fadeInOut * twinkle * 255).toInt().coerceIn(0, 255)
 
             // Base spawn coordinate

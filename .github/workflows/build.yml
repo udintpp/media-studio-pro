@@ -47,16 +47,47 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.5.4
-          name: "MediaStudio Pro v1.5.4 - Export Direct to DCIM/video-pro, New Year Fireworks & Eid Ketupat Particles"
+          tag_name: v1.5.5
+          name: "MediaStudio Pro v1.5.5 - Animasi Super Halus 60fps, Rendering Async, Partikel Lebih Mulus"
           body: |
-            ## 🎆 MediaStudio Pro v1.5.4 - Public Storage Export (DCIM/video-pro), New Year Fireworks & Lebaran Ketupat
+            ## 🎬 MediaStudio Pro v1.5.5 - Smooth 60fps Preview & Rendering Engine Upgrade
 
-            Pembaruan **MediaStudio Pro v1.5.4** membawa perbaikan penting pada penyimpanan hasil export agar langsung tersimpan di penyimpanan publik DCIM dan muncul di Galeri, serta penambahan efek partikel tematik spesial Tahun Baru dan Hari Raya Idul Fitri:
+            Pembaruan **v1.5.5** berfokus sepenuhnya pada peningkatan kelancaran animasi, preview, dan pergerakan efek partikel — tidak ada lagi gerakan patah-patah atau nyendat.
 
             ---
 
-            ### 🚀 Fitur Baru & Peningkatan di v1.5.4:
+            ### 🚀 Peningkatan di v1.5.5:
+
+            1. 🧵 **Dedicated Render Thread (60fps Smooth Preview):**
+               - Engine render efek kini berjalan di **background HandlerThread** terpisah, sehingga main UI thread selalu bebas untuk input sentuh dan navigasi.
+               - Implementasi **double-buffering** (Buffer A/B) mencegah flickering saat frame baru sedang dirender.
+               - **Backpressure guard** via `AtomicBoolean` mencegah antrian frame menumpuk saat CPU sedang sibuk.
+
+            2. ⚡ **Preview Video: 30fps → 60fps:**
+               - Throttle frame preview dikurangi dari 30ms menjadi **16ms (~60fps)**.
+               - Frame video diambil di main thread (TextureView requirement), lalu rendering efek diserahkan ke background thread → **zero dropped frames**.
+
+            3. 🎆 **Partikel Lebih Mulus — Smoothstep Lifecycle:**
+               - Fade in/out partikel kini menggunakan fungsi **cubic Hermite smoothstep** (menggantikan `sin(π*phase)`) yang menghasilkan transisi masuk-keluar ultra-halus tanpa lompatan tiba-tiba.
+               - Twinkle/kedip partikel menggunakan cosine agar lebih lembut dan natural.
+
+            4. ♻️ **Optimasi GC — Paint Reuse:**
+               - Objek `Paint` tidak lagi dibuat ulang di dalam loop per-partikel (mencegah `300 Paint` per frame).
+               - Mengurangi tekanan GC secara drastis → animasi tidak lagi **jank** akibat Garbage Collector.
+
+            5. 🖼️ **Photo Preview Animator Backpressure:**
+               - `ValueAnimator` untuk preview foto kini mengecek status render sebelum antri frame baru, mencegah flooding render thread lebih cepat dari kemampuan GPU.
+
+            6. 🔧 **Fix Export Duplikat File (dari v1.5.4):**
+               - `PhotoExporter.kt`: foto kini disimpan **1 file saja** di `DCIM/video-pro` (tidak lagi ada salinan di `Pictures/MediaStudioPro`).
+               - `StorageExportHelper.kt`: hanya gunakan `MediaScannerConnection.scanFile()` untuk indexing gallery, tidak lagi `resolver.insert()`.
+
+            ---
+
+            ### 📁 Lokasi Hasil Export:
+            > `/storage/emulated/0/DCIM/video-pro/` ← satu file, langsung muncul di Galeri
+
+            ### 🛠️ Versi
 
             1. 📁 **Penyimpanan Export Langsung ke Storage Publik (`DCIM/video-pro`):**
                - Semua hasil export video (Editor Video, After Effects Studio VFX, Slideshow Foto, Pemotong/Penyambung Klip, dan Mixer Audio) kini tersimpan langsung di:
