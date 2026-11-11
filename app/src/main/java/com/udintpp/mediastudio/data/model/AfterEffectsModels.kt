@@ -110,6 +110,30 @@ enum class AeEffectType(
         displayName = "🎵 Audio Waveform Visualizer",
         category = "Audio Reactive",
         description = "Visualisasi gelombang frekuensi suara neon yang bereaksi terhadap dentuman ritme musik."
+    ),
+    CONTOUR_PAINT(
+        id = "contour_paint",
+        displayName = "🎨 Contour Paint (Cel-Shading)",
+        category = "Stylize",
+        description = "Menganalisis kontur rekaman dan mengoleskan goresan posterisasi artistik di sepanjang tepi objek."
+    ),
+    CURL_NOISE(
+        id = "curl_noise",
+        displayName = "🌪️ Curl Noise (Organic Fluid Swirl)",
+        category = "Generate",
+        description = "Simulasi pergerakan fluida organik cairan, pusaran asap, air, dan tinta melayang dinamis."
+    ),
+    UNMULT(
+        id = "unmult",
+        displayName = "⬛ Unmult Alpha Keyer (Hapus Latar Hitam)",
+        category = "Keying",
+        description = "Ekstraksi transparansi otomatis dari latar belakang hitam atau putih solid untuk overlay api, asap, dan ledakan."
+    ),
+    DEPTH_OF_FIELD(
+        id = "depth_of_field",
+        displayName = "📷 3D Camera Depth of Field",
+        category = "Camera",
+        description = "Simulasi fokus optik kamera dengan bokeh aperture blur untuk latar depan dan latar belakang."
     )
 }
 
@@ -279,5 +303,25 @@ data class AeConfig(
     val motionTexts: MutableList<AeMotionText> = mutableListOf(),
 
     // Stickers
-    val stickers: MutableList<AeSticker> = mutableListOf()
+    val stickers: MutableList<AeSticker> = mutableListOf(),
+
+    // Official Adobe After Effects New Features
+    var isUnmultEnabled: Boolean = false,
+    var unmultMode: String = "BLACK", // "BLACK", "WHITE"
+    var unmultThreshold: Float = 0.15f,
+
+    var isContourPaintEnabled: Boolean = false,
+    var contourThreshold: Float = 0.35f,
+    var contourLineWidth: Float = 3f,
+
+    var isCurlNoiseEnabled: Boolean = false,
+    var curlNoiseSpeed: Float = 1.0f,
+    var curlNoiseComplexity: Int = 4,
+
+    var isDepthOfFieldEnabled: Boolean = false,
+    var dofFocusPoint: Float = 0.5f,
+    var dofApertureBlur: Float = 20f,
+
+    var isGuideGridEnabled: Boolean = false,
+    var guideGridType: String = "RULE_OF_THIRDS" // "RULE_OF_THIRDS", "GRID_4X4", "SAFE_MARGIN"
 )

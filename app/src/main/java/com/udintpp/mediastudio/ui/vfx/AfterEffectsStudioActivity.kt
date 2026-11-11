@@ -2,6 +2,8 @@ package com.udintpp.mediastudio.ui.vfx
 
 import android.animation.ValueAnimator
 import android.annotation.SuppressLint
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -88,7 +90,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     private var activeDragTarget = DragTarget.MOTION_TEXT
 
     private enum class ActiveVfxSlider {
-        GLOW, GLITCH, WIGGLE, LENS_FLARE, GRAIN, LIGHT_RAYS, TURBULENT, ZOOM_BLUR, SABER, ROT_X, ROT_Y, NONE
+        GLOW, GLITCH, WIGGLE, LENS_FLARE, GRAIN, LIGHT_RAYS, TURBULENT, ZOOM_BLUR, SABER, ROT_X, ROT_Y, UNMULT, CONTOUR, CURL_NOISE, DOF, NONE
     }
     private var activeSlider = ActiveVfxSlider.GLOW
 
@@ -576,6 +578,35 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             showStickerDialog()
         }
 
+        // --- Official Adobe After Effects Tools & Extensions ---
+        binding.btnQuickApply.setOnClickListener {
+            showQuickApplyDialog()
+        }
+
+        binding.btnGridGuides.setOnClickListener {
+            showGuidesDialog()
+        }
+
+        binding.btnSnapshot.setOnClickListener {
+            takeSnapshot()
+        }
+
+        binding.btnVfxUnmult.setOnClickListener {
+            showUnmultDialog()
+        }
+
+        binding.btnVfxContour.setOnClickListener {
+            showContourDialog()
+        }
+
+        binding.btnVfxCurl.setOnClickListener {
+            showCurlNoiseDialog()
+        }
+
+        binding.btnVfxDof.setOnClickListener {
+            showDepthOfFieldDialog()
+        }
+
         setupTouchRepos()
 
         // Active Slider listener
@@ -594,6 +625,10 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     ActiveVfxSlider.SABER -> aeConfig.saberWidth = (value / 100f) * 20f + 2f
                     ActiveVfxSlider.ROT_X -> aeConfig.rotateX = (value - 50f) * 1.2f
                     ActiveVfxSlider.ROT_Y -> aeConfig.rotateY = (value - 50f) * 1.2f
+                    ActiveVfxSlider.UNMULT -> aeConfig.unmultThreshold = value / 100f
+                    ActiveVfxSlider.CONTOUR -> aeConfig.contourThreshold = value / 100f
+                    ActiveVfxSlider.CURL_NOISE -> aeConfig.curlNoiseSpeed = (value / 50f).coerceAtLeast(0.1f)
+                    ActiveVfxSlider.DOF -> aeConfig.dofApertureBlur = (value / 100f) * 20f
                     ActiveVfxSlider.NONE -> {}
                 }
                 updatePreview()
@@ -629,7 +664,11 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             aeConfig.isFilmGrainEnabled,
             aeConfig.isAudioSpectrumEnabled,
             aeConfig.motionTexts.isNotEmpty(),
-            aeConfig.stickers.isNotEmpty()
+            aeConfig.stickers.isNotEmpty(),
+            aeConfig.isUnmultEnabled,
+            aeConfig.isContourPaintEnabled,
+            aeConfig.isCurlNoiseEnabled,
+            aeConfig.isDepthOfFieldEnabled
         ).count { it }
         binding.tvActiveVfxBadge.text = "⚡ AE Engine: $activeCount Efek Aktif"
     }
@@ -1426,9 +1465,10 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     val frameList = mutableListOf<Bitmap>()
                     val stepMs = durationMs / totalFrames
 
+                    val exportCfg = aeConfig.copy(isGuideGridEnabled = false)
                     for (i in 0 until totalFrames) {
                         val t = i * stepMs
-                        val rendered = AfterEffectsRenderer.renderFrame(base, t, aeConfig)
+                        val rendered = AfterEffectsRenderer.renderFrame(base, t, exportCfg)
                         val scaled = if (resolution.width > 0 && resolution.width < 1000) {
                             val sc = resolution.width.toFloat() / rendered.width
                             Bitmap.createScaledBitmap(rendered, resolution.width, (rendered.height * sc).toInt(), true)
@@ -1477,9 +1517,10 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     val destRect = android.graphics.Rect(0, 0, width, height)
                     val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG or android.graphics.Paint.FILTER_BITMAP_FLAG)
 
+                    val exportCfg = aeConfig.copy(isGuideGridEnabled = false)
                     for (f in 0 until totalFrames) {
                         val t = f * stepMs
-                        val rendered = AfterEffectsRenderer.renderFrame(base, t, aeConfig)
+                        val rendered = AfterEffectsRenderer.renderFrame(base, t, exportCfg)
                         val canvas = inputSurface.lockCanvas(null)
                         canvas.drawColor(Color.BLACK)
                         canvas.drawBitmap(rendered, null, destRect, paint)
@@ -1576,6 +1617,311 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                 }
             }
         }
+    }
+
+    // --- Official Adobe After Effects Extended Features ---
+
+    private fun showQuickApplyDialog() {
+        val tools = arrayOf(
+            "🌟 Optical Glow",
+            "⚡ RGB Glitch & Split",
+            "📳 Camera Wiggle (Shake)",
+            "☀️ CC Light Rays (God Rays)",
+            "🌊 Turbulent Displace (Liquify)",
+            "🌀 CC Radial Zoom Blur",
+            "⚡ Saber Neon Edge Effect",
+            "☀️ Anamorphic Lens Flare",
+            "🎨 Lumetri Color Grading",
+            "✨ Partikel Sparks & Atmospheric Emitters",
+            "🎛️ Parameter Partikel Kustom",
+            "🎞️ Film Grain 35mm Real Stock",
+            "🔤 Motion Text Animasi",
+            "✨ Timbul, 3D & Tipografi Huruf",
+            "🎉 Stiker Animasi Giphy/PNG",
+            "🎵 Audio Waveform / Spectrum React",
+            "🎭 Blending Modes (Add, Screen, dll)",
+            "⬛ Unmult Alpha Keyer (Hapus Latar Hitam/Putih)",
+            "🎨 Contour Paint (Cel-Shading Outlines)",
+            "🌪️ Curl Noise (Organic Fluid Smoke Swirl)",
+            "📷 3D Camera Depth of Field",
+            "📐 Composition Guides & Safe Margins",
+            "📸 Snapshot Frame ke Clipboard",
+            "⚙️ Pengaturan Komposisi (Resolusi, Rasio, Durasi)"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("🔍 Quick Apply - Adobe After Effects")
+            .setItems(tools) { _, which ->
+                when (which) {
+                    0 -> binding.btnVfxGlow.performClick()
+                    1 -> binding.btnVfxGlitch.performClick()
+                    2 -> binding.btnVfxWiggle.performClick()
+                    3 -> binding.btnVfxLightRays.performClick()
+                    4 -> binding.btnVfxTurbulent.performClick()
+                    5 -> binding.btnVfxZoomBlur.performClick()
+                    6 -> binding.btnVfxSaber.performClick()
+                    7 -> binding.btnVfxLensFlare.performClick()
+                    8 -> showLumetriDialog()
+                    9 -> showParticleSelectionDialog()
+                    10 -> showParticleSettingsDialog()
+                    11 -> binding.btnVfxFilmGrain.performClick()
+                    12 -> showMotionTextDialog()
+                    13 -> showTextStyleDialog()
+                    14 -> showStickerDialog()
+                    15 -> binding.btnVfxAudioSpectrum.performClick()
+                    16 -> showBlendModeDialog()
+                    17 -> showUnmultDialog()
+                    18 -> showContourDialog()
+                    19 -> showCurlNoiseDialog()
+                    20 -> showDepthOfFieldDialog()
+                    21 -> showGuidesDialog()
+                    22 -> takeSnapshot()
+                    23 -> showCompSettingsDialog()
+                }
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showGuidesDialog() {
+        val options = arrayOf(
+            "Matikan Guides",
+            "📐 Rule of Thirds (Garis & Titik Emas)",
+            "🛡️ Title & Action Safe Margins (Broadcast)",
+            "📏 Grid 4x4 Simetris"
+        )
+        val types = arrayOf("NONE", "RULE_OF_THIRDS", "SAFE_MARGIN", "GRID_4X4")
+
+        AlertDialog.Builder(this)
+            .setTitle("📐 Composition Guides & Grid Overlay")
+            .setItems(options) { _, which ->
+                if (which == 0) {
+                    aeConfig.isGuideGridEnabled = false
+                    Toast.makeText(this, "Guides dimatikan", Toast.LENGTH_SHORT).show()
+                } else {
+                    aeConfig.isGuideGridEnabled = true
+                    aeConfig.guideGridType = types[which]
+                    Toast.makeText(this, "Guides: ${options[which]} aktif", Toast.LENGTH_SHORT).show()
+                }
+                updatePreview()
+            }
+            .show()
+    }
+
+    private fun takeSnapshot() {
+        try {
+            val currentFrame = if (isVideo && videoFrameBitmap != null) {
+                videoFrameBitmap!!
+            } else {
+                baseBitmap ?: createFallbackBitmap()
+            }
+            val snapshotBmp = Bitmap.createBitmap(currentFrame.width, currentFrame.height, Bitmap.Config.ARGB_8888)
+            val cfgNoGuide = aeConfig.copy(isGuideGridEnabled = false)
+            AfterEffectsRenderer.renderFrame(currentFrame, currentTimeMs, cfgNoGuide, snapshotBmp)
+
+            val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "MediaStudioPro_Snapshots")
+            if (!dir.exists()) dir.mkdirs()
+            val fileName = "AE_Snapshot_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())}.png"
+            val file = File(dir, fileName)
+            val out = FileOutputStream(file)
+            snapshotBmp.compress(Bitmap.CompressFormat.PNG, 100, out)
+            out.flush()
+            out.close()
+
+            val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+            val clip = ClipData.newPlainText("AE Snapshot Path", file.absolutePath)
+            clipboard.setPrimaryClip(clip)
+
+            Toast.makeText(this, "📸 Snapshot disimpan di:\n${file.name}\n(Path disalin ke clipboard!)", Toast.LENGTH_LONG).show()
+        } catch (e: Exception) {
+            Toast.makeText(this, "Gagal mengambil snapshot: ${e.message}", Toast.LENGTH_SHORT).show()
+        }
+    }
+
+    private fun showUnmultDialog() {
+        val options = arrayOf(
+            if (aeConfig.isUnmultEnabled) "🔴 Nonaktifkan Unmult" else "🟢 Aktifkan Unmult",
+            "Mode: Hapus Background Hitam (Black to Alpha)",
+            "Mode: Hapus Background Putih (White to Alpha)",
+            "🎛️ Atur Threshold / Sensitivitas (${(aeConfig.unmultThreshold * 100).toInt()}%)"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("⬛ Knoll Unmult Alpha Keyer")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        aeConfig.isUnmultEnabled = !aeConfig.isUnmultEnabled
+                        binding.btnVfxUnmult.text = if (aeConfig.isUnmultEnabled) "⬛ Unmult: ON" else "⬛ Unmult Alpha"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    1 -> {
+                        aeConfig.isUnmultEnabled = true
+                        aeConfig.unmultMode = "BLACK"
+                        binding.btnVfxUnmult.text = "⬛ Unmult: ON"
+                        updateBadge()
+                        updatePreview()
+                        Toast.makeText(this, "Unmult: Menghapus latar hitam", Toast.LENGTH_SHORT).show()
+                    }
+                    2 -> {
+                        aeConfig.isUnmultEnabled = true
+                        aeConfig.unmultMode = "WHITE"
+                        binding.btnVfxUnmult.text = "⬛ Unmult: ON"
+                        updateBadge()
+                        updatePreview()
+                        Toast.makeText(this, "Unmult: Menghapus latar putih", Toast.LENGTH_SHORT).show()
+                    }
+                    3 -> {
+                        activeSlider = ActiveVfxSlider.UNMULT
+                        updateSliderUI("Sensitivitas Unmult Alpha", (aeConfig.unmultThreshold * 100).toInt())
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun showContourDialog() {
+        val options = arrayOf(
+            if (aeConfig.isContourPaintEnabled) "🔴 Nonaktifkan Contour Paint" else "🟢 Aktifkan Contour Paint",
+            "Garis Tipis (1.5px)",
+            "Garis Sedang (3.0px)",
+            "Garis Tebal (5.0px)",
+            "🎛️ Atur Sensitivitas Outline Contour"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("🎨 Contour Paint (Cel-Shading Outlines)")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        aeConfig.isContourPaintEnabled = !aeConfig.isContourPaintEnabled
+                        binding.btnVfxContour.text = if (aeConfig.isContourPaintEnabled) "🎨 Contour: ON" else "🎨 Contour Paint"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    1 -> {
+                        aeConfig.isContourPaintEnabled = true
+                        aeConfig.contourLineWidth = 1.5f
+                        binding.btnVfxContour.text = "🎨 Contour: ON"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    2 -> {
+                        aeConfig.isContourPaintEnabled = true
+                        aeConfig.contourLineWidth = 3.0f
+                        binding.btnVfxContour.text = "🎨 Contour: ON"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    3 -> {
+                        aeConfig.isContourPaintEnabled = true
+                        aeConfig.contourLineWidth = 5.0f
+                        binding.btnVfxContour.text = "🎨 Contour: ON"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    4 -> {
+                        activeSlider = ActiveVfxSlider.CONTOUR
+                        updateSliderUI("Sensitivitas Contour Paint", (aeConfig.contourThreshold * 100).toInt())
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun showCurlNoiseDialog() {
+        val options = arrayOf(
+            if (aeConfig.isCurlNoiseEnabled) "🔴 Nonaktifkan Curl Noise" else "🟢 Aktifkan Curl Noise",
+            "Kecepatan: Aliran Santai (Slow Drift)",
+            "Kecepatan: Pusaran Normal (Natural Flow)",
+            "Kecepatan: Tornado Turbulen (Rapid Vortex)",
+            "🎛️ Atur Kecepatan Fluid Custom"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("🌪️ Curl Noise (Organic Fluid Swirl)")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        aeConfig.isCurlNoiseEnabled = !aeConfig.isCurlNoiseEnabled
+                        binding.btnVfxCurl.text = if (aeConfig.isCurlNoiseEnabled) "🌪️ Curl: ON" else "🌪️ Curl Noise"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    1 -> {
+                        aeConfig.isCurlNoiseEnabled = true
+                        aeConfig.curlNoiseSpeed = 0.5f
+                        binding.btnVfxCurl.text = "🌪️ Curl: ON"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    2 -> {
+                        aeConfig.isCurlNoiseEnabled = true
+                        aeConfig.curlNoiseSpeed = 1.0f
+                        binding.btnVfxCurl.text = "🌪️ Curl: ON"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    3 -> {
+                        aeConfig.isCurlNoiseEnabled = true
+                        aeConfig.curlNoiseSpeed = 2.0f
+                        binding.btnVfxCurl.text = "🌪️ Curl: ON"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    4 -> {
+                        activeSlider = ActiveVfxSlider.CURL_NOISE
+                        updateSliderUI("Kecepatan Pusaran Fluid", (aeConfig.curlNoiseSpeed * 50).toInt())
+                    }
+                }
+            }
+            .show()
+    }
+
+    private fun showDepthOfFieldDialog() {
+        val options = arrayOf(
+            if (aeConfig.isDepthOfFieldEnabled) "🔴 Nonaktifkan Depth of Field" else "🟢 Aktifkan Depth of Field",
+            "Fokus: Area Depan (Foreground)",
+            "Fokus: Area Tengah (Midground)",
+            "Fokus: Area Belakang (Background)",
+            "🎛️ Atur Aperture / Bokeh Blur"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("📷 3D Camera Depth of Field")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        aeConfig.isDepthOfFieldEnabled = !aeConfig.isDepthOfFieldEnabled
+                        binding.btnVfxDof.text = if (aeConfig.isDepthOfFieldEnabled) "📷 DOF: ON" else "📷 3D Depth Field"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    1 -> {
+                        aeConfig.isDepthOfFieldEnabled = true
+                        aeConfig.dofFocusPoint = 0.25f
+                        binding.btnVfxDof.text = "📷 DOF: ON"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    2 -> {
+                        aeConfig.isDepthOfFieldEnabled = true
+                        aeConfig.dofFocusPoint = 0.50f
+                        binding.btnVfxDof.text = "📷 DOF: ON"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    3 -> {
+                        aeConfig.isDepthOfFieldEnabled = true
+                        aeConfig.dofFocusPoint = 0.75f
+                        binding.btnVfxDof.text = "📷 DOF: ON"
+                        updateBadge()
+                        updatePreview()
+                    }
+                    4 -> {
+                        activeSlider = ActiveVfxSlider.DOF
+                        updateSliderUI("Aperture Bokeh Blur", (aeConfig.dofApertureBlur * 5).toInt())
+                    }
+                }
+            }
+            .show()
     }
 
     private fun formatTime(ms: Long): String {

@@ -30,14 +30,39 @@
             android:layout_weight="1"
             android:text="After Effects Studio Pro"
             android:textColor="@color/text_primary"
-            android:textSize="18sp"
+            android:textSize="17sp"
             android:textStyle="bold" />
+
+        <ImageButton
+            android:id="@+id/btn_quick_apply"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_search"
+            app:tint="@color/accent_cyan" />
+
+        <ImageButton
+            android:id="@+id/btn_grid_guides"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_crop"
+            app:tint="@color/accent_amber" />
+
+        <ImageButton
+            android:id="@+id/btn_snapshot"
+            android:layout_width="38dp"
+            android:layout_height="38dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:src="@android:drawable/ic_menu_camera"
+            app:tint="@color/white" />
 
         <Button
             android:id="@+id/btn_comp_settings"
             style="@style/Widget.Material3.Button.TonalButton"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="38dp"
+            android:layout_marginStart="4dp"
             android:layout_marginEnd="6dp"
             android:text="⚙️ Komposisi"
             android:textColor="@color/accent_cyan"
@@ -46,7 +71,7 @@
         <Button
             android:id="@+id/btn_export_vfx"
             android:layout_width="wrap_content"
-            android:layout_height="40dp"
+            android:layout_height="38dp"
             android:backgroundTint="@color/primary"
             android:text="Export 4K"
             android:textColor="@color/white"
@@ -508,6 +533,44 @@
                     android:layout_height="40dp"
                     android:layout_marginEnd="6dp"
                     android:text="🎭 Blending Modes"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_unmult"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="⬛ Unmult Alpha"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_contour"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🎨 Contour Paint"
+                    android:textColor="@color/accent_amber"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_curl"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🌪️ Curl Noise"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_dof"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="📷 3D Depth Field"
                     android:textSize="11sp" />
             </LinearLayout>
         </HorizontalScrollView>

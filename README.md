@@ -39,6 +39,13 @@
   - `GIF Animasi Video` (Cuplikan video bergerak transparan)
 
 ### 3. ⚡ Adobe After Effects Studio Pro (Motion Graphics, Customization & VFX Engine)
+- **⬛ Knoll Unmult Alpha Keyer (Hapus Latar Hitam/Putih Berbasis Luminance):** Mengadopsi teknologi keyer standar industri untuk menghilangkan latar belakang hitam pekat (atau putih pekat) dari video stok (efek ledakan, api, debu, asap, partikel) dan mengubahnya menjadi kanal transparansi alpha murni secara instan dengan pengaturan threshold luminance.
+- **🎨 Contour Paint (Cel-Shading Outlines):** Deteksi kontur pencahayaan objek secara real-time untuk menggambar garis tepi artistik ala animasi cel-shading dengan pilihan ketebalan garis (1.5px, 3.0px, 5.0px).
+- **🌪️ Curl Noise Fluid Swirl (Simulasi Aliran Fluida & Asap):** Generator partikel dan pita fluida prosedural (cyber stream ribbons) yang berputar dinamis mengikuti rumus curl noise trigonometrik.
+- **📷 3D Camera Depth of Field (Simulasi Kedalaman Lensa Kamera):** Kedalaman fokus kamera optik 3D dengan focal plane (Foreground, Midground, Background) dan aperture bokeh blur sinematik.
+- **🔍 Quick Apply Command Bar:** Bar pencarian cepat di toolbar atas untuk melompat langsung ke alat, preset, atau efek After Effects mana pun secara instan.
+- **📐 Composition Guides & Grid Overlay:** Panduan visual presisi dengan **Rule of Thirds** (beserta 4 titik emas fokus), **Broadcast Safe Areas** (Action Safe 95% & Title Safe 90%), dan **Grid 4x4 Simetris**.
+- **📸 Instant Frame Snapshot:** Tangkap frame video pada resolusi penuh, simpan langsung ke galeri foto, dan salin path file ke clipboard Android.
 - **🎬 Pemutaran Pratinjau Video Bergerak Real-time (Live Video Playback Engine):** Integrasi pemutar hardware-accelerated **TextureView** dan **MediaPlayer** yang memutar video bergerak halus 30-60 fps lengkap dengan audio sinkron saat preview tombol play ditekan. Dilengkapi arsitektur *double-buffering zero-GC frame compositor* untuk merender efek visual After Effects di atas video yang sedang bergerak secara instan.
 - **⚙️ Kustom Durasi Komposisi (Custom Duration):** Pengaturan durasi komposisi bebas: preset cepat (3s, 5s, 10s, 15s, 30s, 60s) atau input manual hingga 300 detik dengan sinkronisasi langsung pada timeline seekbar dan export rendering.
 - **📐 Kustom Resolusi & Rasio Aspek Layar:** Rasio standar industri: **16:9 Landscape (YouTube)**, **9:16 Vertikal (TikTok/Reels/Shorts)**, **1:1 Persegi (Instagram)**, **4:5 Sinematik Portrait**, dan **21:9 Ultrawide Bioskop**, serta opsi resolusi render hingga **4K UHD (3840x2160)**.

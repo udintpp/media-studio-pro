@@ -47,16 +47,50 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.5.1
-          name: "MediaStudio Pro v1.5.1 - Real-time Hardware Video Playback & VFX Live Preview"
+          tag_name: v1.5.2
+          name: "MediaStudio Pro v1.5.2 - Adobe After Effects Engine: Unmult Alpha, Contour Paint, Curl Noise, 3D DOF, Quick Apply & Guides"
           body: |
-            ## ⚡ MediaStudio Pro v1.5.1 - Real-time Hardware Video Playback & Live VFX Preview
+            ## ⚡ MediaStudio Pro v1.5.2 - Adopsi Fitur Resmi Adobe After Effects
 
-            Pembaruan **MediaStudio Pro v1.5.1** memperbaiki pemutaran pratinjau video di **After Effects Studio Pro**, memastikan gambar video bergerak dan terputar secara *real-time* dan sinkron bersama efek visual (VFX), animasi motion text, dan stiker!
+            Pembaruan **MediaStudio Pro v1.5.2** mengadopsi fitur-fitur resmi terbaru dari **Adobe After Effects** (berdasarkan referensi dokumentasi resmi Adobe):
+            - **Knoll Unmult Alpha Keyer** (Penghapus Latar Hitam/Putih Berdasarkan Luminance Alpha)
+            - **Contour Paint** (Cel-Shading Outlines & Deteksi Kontur Artistik)
+            - **Curl Noise Generator** (Simulasi Dinamis Pusaran Asap & Aliran Cairan Organik)
+            - **3D Camera Depth of Field** (Simulasi Fokus Lensa Kamera & Aperture Bokeh Blur)
+            - **Quick Apply Command Bar** (Pencarian & Akses Cepat Seluruh Tool & Efek AE)
+            - **Composition Guides & Grid Overlay** (Rule of Thirds, Title/Action Safe Areas, Grid 4x4)
+            - **Instant Frame Snapshot** (Tangkapan Layar Resolusi Penuh & Salin ke Clipboard)
 
             ---
 
-            ### 🚀 Pembaruan & Perbaikan di v1.5.1:
+            ### 🚀 Fitur Baru Resmi Adobe After Effects di v1.5.2:
+
+            1. ⬛ **Knoll Unmult Alpha Keyer:**
+               - Mengadopsi teknologi keyer standar industri untuk menghapus latar belakang hitam pekat (atau putih pekat) dari video stok (efek api, ledakan, asap, percikan kembang api, dust particles) dan mengubah luminansinya menjadi kanal transparansi alpha yang bersih secara instan.
+               - Mendukung slider sensitivitas threshold luminance dan pilihan mode latar hitam/putih.
+
+            2. 🎨 **Contour Paint Effect (Cel-Shading Outlines):**
+               - Menganalisis kurva kontur luminansi objek pada video/foto untuk menggambar garis goresan artistik (cel-shading contour outlines) secara real-time.
+               - Pilihan ketebalan garis: Tipis (1.5px), Sedang (3.0px), Tebal (5.0px), serta penyesuaian sensitivitas batas kontur.
+
+            3. 🌪️ **Curl Noise Fluid Swirl (Simulasi Pusaran Fluida):**
+               - Algoritma curl-noise prosedural matematika yang menghasilkan pita aliran fluida lembut (cyber stream ribbons / cosmic nebula) dengan interaksi gelombang trigonometrik organik.
+               - Pengaturan kecepatan aliran (Slow Drift, Natural Flow, Rapid Vortex) yang bergerak dinamis mengikuti waktu playback.
+
+            4. 📷 **3D Camera Depth of Field (Simulasi Kedalaman Lensa Kamera):**
+               - Efek kedalaman optik kamera 3D dengan focal plane (Foreground 25%, Midground 50%, Background 75%) dan slider aperture bokeh blur lembut pada area di luar fokus.
+
+            5. 🔍 **Quick Apply Command Bar (Akses Cepat Tool After Effects):**
+               - Tombol pencarian cepat di bilah navigasi atas untuk melompat langsung ke efek atau alat mana pun (Glow, Glitch, Wiggle, Saber, Lumetri, Partikel, Motion Text, Stiker, Unmult, Contour, Curl, DOF, Guides, Snapshot, Komposisi) tanpa perlu menggulir menu.
+
+            6. 📐 **Composition Guides & Grid Overlay (Presisi Komposisi Visual):**
+               - **Rule of Thirds:** Garis panduan 3x3 dengan 4 titik emas pertemuan fokus.
+               - **Broadcast Safe Areas:** Garis batas Action Safe (95%) dan Title Safe (90%) standar bioskop & siaran TV agar teks dan aksi tidak terpotong.
+               - **Grid 4x4:** Garis grid simetri untuk meratakan objek dan teks.
+               - Otomatis disembunyikan saat merender/mengeksport video final agar hasil tetap bersih.
+
+            7. 📸 **Instant Frame Snapshot ke Clipboard:**
+               - Tangkap frame video pada posisi milidetik saat ini dalam resolusi penuh, simpan otomatis ke galeri (`Pictures/MediaStudioPro_Snapshots/`), dan salin lokasi file langsung ke clipboard Android.
 
             1. 🎬 **Pemutaran Video Bergerak Real-time (Live Video Playback Engine):**
                - Memperbaiki masalah gambar video yang diam/statis saat tombol putar ditekan dan timer waktu berjalan.

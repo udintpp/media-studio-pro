@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorMatrix
 import android.graphics.ColorMatrixColorFilter
+import android.graphics.DashPathEffect
 import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
@@ -163,6 +164,31 @@ object AfterEffectsRenderer {
         // 14. Animated Stickers & Emoji Overlays
         for (sticker in config.stickers) {
             renderSticker(canvas, w, h, timeMs, sticker, config.effectSpeed)
+        }
+
+        // 15. Unmult Alpha Keyer (Black/White Background Removal)
+        if (config.isUnmultEnabled) {
+            applyUnmult(canvas, output, w, h, config.unmultMode, config.unmultThreshold)
+        }
+
+        // 16. Contour Paint (Cel-Shaded Outline Art)
+        if (config.isContourPaintEnabled) {
+            applyContourPaint(canvas, w, h, src, config.contourThreshold, config.contourLineWidth)
+        }
+
+        // 17. Curl Noise (Organic Fluid Swirl)
+        if (config.isCurlNoiseEnabled) {
+            renderCurlNoise(canvas, w, h, timeMs, config.curlNoiseSpeed * config.effectSpeed)
+        }
+
+        // 18. 3D Camera Depth of Field
+        if (config.isDepthOfFieldEnabled) {
+            applyDepthOfField(canvas, w, h, config.dofFocusPoint, config.dofApertureBlur)
+        }
+
+        // 19. Composition Guides & Grid Overlay
+        if (config.isGuideGridEnabled) {
+            drawCompositionGuides(canvas, w, h, config.guideGridType)
         }
 
         return output
@@ -885,5 +911,166 @@ object AfterEffectsRenderer {
         }
         canvas.drawText(sticker.content, 0f, 24f, stickerPaint)
         canvas.restore()
+    }
+
+    // --- 11. Unmult Alpha Keyer (Black/White Background Removal) ---
+    private fun applyUnmult(canvas: Canvas, target: Bitmap, w: Int, h: Int, mode: String, threshold: Float) {
+        val threshVal = (threshold * 255f)
+        val matrix = if (mode == "WHITE") {
+            // Invert luminance for white background
+            floatArrayOf(
+                1f, 0f, 0f, 0f, 0f,
+                0f, 1f, 0f, 0f, 0f,
+                0f, 0f, 1f, 0f, 0f,
+                -0.3f, -0.59f, -0.11f, 0f, 255f - threshVal
+            )
+        } else {
+            // Standard Knoll's Unmult: luminance determines alpha
+            floatArrayOf(
+                1f, 0f, 0f, 0f, 0f,
+                0f, 1f, 0f, 0f, 0f,
+                0f, 0f, 1f, 0f, 0f,
+                0.3f, 0.59f, 0.11f, 0f, -threshVal
+            )
+        }
+        val unmultPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            colorFilter = ColorMatrixColorFilter(ColorMatrix(matrix))
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.DST_IN)
+        }
+        canvas.drawBitmap(target, 0f, 0f, unmultPaint)
+    }
+
+    // --- 12. Contour Paint (Cel-Shaded Outline Art) ---
+    private fun applyContourPaint(canvas: Canvas, w: Int, h: Int, src: Bitmap, threshold: Float, lineWidth: Float) {
+        val edgePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.BLACK
+            style = Paint.Style.STROKE
+            strokeWidth = lineWidth
+            alpha = (threshold * 220).toInt().coerceIn(80, 255)
+        }
+        val step = 20
+        for (y in step until (h - step) step step) {
+            val path = Path()
+            var isDrawing = false
+            for (x in step until (w - step) step step) {
+                val px = src.getPixel(x, y)
+                val lum = (Color.red(px) * 0.3f + Color.green(px) * 0.59f + Color.blue(px) * 0.11f) / 255f
+                if (lum < 0.30f || lum > 0.82f) {
+                    if (!isDrawing) {
+                        path.moveTo(x.toFloat(), y.toFloat())
+                        isDrawing = true
+                    } else {
+                        path.lineTo(x.toFloat(), y.toFloat() + (sin(x * 0.12) * 3f).toFloat())
+                    }
+                } else {
+                    isDrawing = false
+                }
+            }
+            canvas.drawPath(path, edgePaint)
+        }
+    }
+
+    // --- 13. Curl Noise (Organic Fluid Swirl) ---
+    private fun renderCurlNoise(canvas: Canvas, w: Int, h: Int, timeMs: Long, speed: Float) {
+        val t = (timeMs / 1000f) * speed * 1.5f
+        val curlPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+            style = Paint.Style.STROKE
+            strokeCap = Paint.Cap.ROUND
+        }
+        val streamCount = 14
+        for (i in 0 until streamCount) {
+            val path = Path()
+            val startX = (w.toFloat() / streamCount) * i
+            val startY = h * 0.95f
+            path.moveTo(startX, startY)
+            var curX = startX
+            var curY = startY
+            val segments = 12
+            val stepY = h / segments.toFloat()
+            for (s in 0 until segments) {
+                val angle = (sin(s * 0.5 + t + i) * 1.8 + cos(curY * 0.005 + t)).toFloat()
+                curX += sin(angle) * 32f
+                curY -= stepY
+                path.lineTo(curX, curY)
+            }
+            curlPaint.strokeWidth = 6f + sin(i + t).toFloat() * 4f
+            curlPaint.shader = LinearGradient(
+                startX, startY, curX, curY,
+                Color.argb(130, 6, 182, 212),
+                Color.argb(30, 168, 85, 247),
+                Shader.TileMode.CLAMP
+            )
+            canvas.drawPath(path, curlPaint)
+        }
+    }
+
+    // --- 14. 3D Camera Depth of Field ---
+    private fun applyDepthOfField(canvas: Canvas, w: Int, h: Int, focusPoint: Float, blurAmount: Float) {
+        val focalY = h * focusPoint
+        val bandHeight = h * 0.22f
+        val dofPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.SRC_OVER)
+            shader = LinearGradient(
+                0f, 0f, 0f, h.toFloat(),
+                intArrayOf(
+                    Color.argb((blurAmount * 4).toInt().coerceIn(20, 120), 20, 25, 40),
+                    Color.TRANSPARENT,
+                    Color.argb((blurAmount * 4).toInt().coerceIn(20, 120), 20, 25, 40)
+                ),
+                floatArrayOf(
+                    (focalY - bandHeight).coerceAtLeast(0f) / h,
+                    focalY / h,
+                    (focalY + bandHeight).coerceAtMost(h.toFloat()) / h
+                ),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), dofPaint)
+    }
+
+    // --- 15. Composition Guides & Grid Overlay ---
+    private fun drawCompositionGuides(canvas: Canvas, w: Int, h: Int, type: String) {
+        val guidePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.parseColor("#8006B6D4")
+            style = Paint.Style.STROKE
+            strokeWidth = 1.5f
+            pathEffect = DashPathEffect(floatArrayOf(12f, 8f), 0f)
+        }
+        when (type) {
+            "RULE_OF_THIRDS" -> {
+                val x1 = w / 3f
+                val x2 = (w * 2) / 3f
+                val y1 = h / 3f
+                val y2 = (h * 2) / 3f
+                canvas.drawLine(x1, 0f, x1, h.toFloat(), guidePaint)
+                canvas.drawLine(x2, 0f, x2, h.toFloat(), guidePaint)
+                canvas.drawLine(0f, y1, w.toFloat(), y1, guidePaint)
+                canvas.drawLine(0f, y2, w.toFloat(), y2, guidePaint)
+
+                guidePaint.pathEffect = null
+                guidePaint.color = Color.parseColor("#E0FBBF24")
+                guidePaint.strokeWidth = 3f
+                val nodes = listOf(Pair(x1, y1), Pair(x2, y1), Pair(x1, y2), Pair(x2, y2))
+                for ((nx, ny) in nodes) {
+                    canvas.drawCircle(nx, ny, 6f, guidePaint)
+                }
+            }
+            "SAFE_MARGIN" -> {
+                val mAction = RectF(w * 0.05f, h * 0.05f, w * 0.95f, h * 0.95f)
+                val mTitle = RectF(w * 0.10f, h * 0.10f, w * 0.90f, h * 0.90f)
+                canvas.drawRect(mAction, guidePaint)
+                guidePaint.color = Color.parseColor("#80F59E0B")
+                canvas.drawRect(mTitle, guidePaint)
+            }
+            "GRID_4X4" -> {
+                for (i in 1..3) {
+                    val gx = (w / 4f) * i
+                    val gy = (h / 4f) * i
+                    canvas.drawLine(gx, 0f, gx, h.toFloat(), guidePaint)
+                    canvas.drawLine(0f, gy, w.toFloat(), gy, guidePaint)
+                }
+            }
+        }
     }
 }
