@@ -47,16 +47,41 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.5.7
-          name: "MediaStudio Pro v1.5.7 - Teks Berjalan, Template Frame, 3D/2D Tipografi & 9 Template Desain Siap Pakai"
+          tag_name: v1.5.8
+          name: "MediaStudio Pro v1.5.8 - 60 FPS Ultra-Smooth Export, Mastering Sinematik & Tekstur Alami 35mm"
           body: |
-            ## 🔤 MediaStudio Pro v1.5.7 - Running Text, Frames, Tipografi 3D/2D & Templates
+            ## 🎬 MediaStudio Pro v1.5.8 - Ultra-Smooth 60 FPS Export & Cinematic Mastering
 
-            Pembaruan **v1.5.7** menghadirkan fitur **Teks & Animasi Berjalan** yang sangat lengkap:
+            Pembaruan **v1.5.8** menghadirkan peningkatan performa ekspor video dan efek finishing sinematik alami tingkat tinggi:
 
             ---
 
-            ### 🚀 Fitur Baru & Peningkatan di v1.5.6:
+            ### 🚀 Fitur Baru & Peningkatan di v1.5.8:
+
+            1. ⚡ **Ekspor Hardware 60 FPS Ultra-Smooth (Bebas Patah-Patah / Nyendat):**
+               - Mesin hardware encoder MediaCodec dioptimalkan dengan **Monotonic Equidistant PTS Presentation Timestamps**, menghilangkan inkonsistensi waktu rendering CPU yang sebelumnya menyebabkan video tersendat/patah-patah.
+               - Hasil ekspor kini berjalan pada **60 FPS** yang sangat mulus, halus, dan lembut di semua pemutar video modern.
+               - Dilengkapi **Decoded Frame Caching** untuk menjamin tidak ada frame drop atau kedipan gambar mundur ke frame 0 saat membaca stream video.
+
+            2. ✨ **Black Pro-Mist Bloom Diffusion (Pendaran Halus & Lembut):**
+               - Menghilangkan ketajaman digital yang kaku dengan difusi cahaya Pro-Mist bilateral bloom.
+               - Pendaran hangat keemasan (warm amber halation) pada highlight membuat kontras gambar lebih lembut dan berkelas.
+
+            3. 🎞️ **Tekstur Alami 35mm Real Celluloid Micro-Grain:**
+               - Tekstur butiran film multi-oktav organik yang dipadukan dengan mode blend *Soft Overlay*, memberikan karakter film seluloid alami pada visual dan elemen teks/tumpukan.
+
+            4. 🕶️ **Soft Optical Lens Vignette & Anamorphic Letterbox:**
+               - Efek falloff optik lensa sinematik untuk memusatkan perhatian ke subjek utama.
+               - Opsi bingkai bilah hitam rasio sinema **2.39:1 Cinemascope** sejati.
+
+            5. 🌪️ **Sub-Frame Motion Blur untuk Teks & Animasi:**
+               - Gerakan teks berjalan (Marquee / News Ticker / Crawl) kini dilengkapi shutter motion blur sub-frame alami sehingga tidak ada efek stroboskopik digital.
+
+            6. 🎛️ **Preset Mastering Sinematik 1-Klik:**
+               - **Hollywood Cinema:** Pro-Mist Bloom + Tekstur 35mm + Soft Vignette + 2.39:1 Letterbox + 60 FPS.
+               - **Vintage 35mm Film:** Butiran film pekat + pendaran hangat klasik.
+               - **Dreamy Soft Portrait:** Difusi lembut Pro-Mist maksimal dengan halasi puitis.
+               - **Clean Film Master:** Sentuhan mikro-tekstur alami 60 FPS ultra-halus.
 
             1. 🖼️ **Menumpuk Video atau Foto (Media Overlay / PIP Layer):**
                - Tambahkan foto atau video dari galeri untuk ditumpuk di atas komposisi video atau foto utama.

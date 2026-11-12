@@ -206,6 +206,23 @@ object AfterEffectsRenderer {
             drawCompositionGuides(canvas, w, h, config.guideGridType)
         }
 
+        // 20. Master Cinematic Finishing Pass (Pro-Mist Bloom, Natural Film Texture, Vignette & Letterbox)
+        if (config.isCinematicProMistEnabled) {
+            renderCinematicProMist(canvas, output, w, h, config.proMistIntensity, config.proMistWarmth)
+        }
+
+        if (config.isCinematicFilmTextureEnabled) {
+            renderCinematicFilmTexture(canvas, w, h, timeMs, config.cinematicTextureAmount)
+        }
+
+        if (config.isCinematicVignetteEnabled) {
+            renderCinematicVignette(canvas, w, h, config.cinematicVignetteAmount)
+        }
+
+        if (config.isCinematicLetterboxEnabled) {
+            renderCinematicLetterbox(canvas, w, h)
+        }
+
         return output
     }
 
@@ -1268,7 +1285,16 @@ object AfterEffectsRenderer {
                 val totalSpan = w + textWidth + 120f
                 val traveled = ((speedMs * 0.16f * scrollSpeed) % totalSpan)
                 val posX = (w + 60f) - traveled
-                drawStyledTextWithFrame(canvas, posX, py, item.text, textPaint, item, timeMs, w, h)
+
+                // Cinematic Optical Shutter Motion Blur
+                val origAlpha = textPaint.alpha
+                val blurOffset = (scrollSpeed * 3.0f).coerceIn(1.5f, 8.0f)
+                textPaint.alpha = (origAlpha * 0.22f).toInt()
+                drawStyledTextWithFrame(canvas, posX + blurOffset * 1.5f, py, item.text, textPaint, item, timeMs, w, h, drawFrame = false)
+                drawStyledTextWithFrame(canvas, posX + blurOffset * 0.75f, py, item.text, textPaint, item, timeMs, w, h, drawFrame = false)
+                textPaint.alpha = origAlpha
+
+                drawStyledTextWithFrame(canvas, posX, py, item.text, textPaint, item, timeMs, w, h, drawFrame = true)
             }
             "SCROLL_RIGHT" -> {
                 // Teks Berjalan ke Kanan (Marquee Right)
@@ -1276,7 +1302,15 @@ object AfterEffectsRenderer {
                 val totalSpan = w + textWidth + 120f
                 val traveled = ((speedMs * 0.16f * scrollSpeed) % totalSpan)
                 val posX = (-textWidth - 60f) + traveled
-                drawStyledTextWithFrame(canvas, posX, py, item.text, textPaint, item, timeMs, w, h)
+
+                val origAlpha = textPaint.alpha
+                val blurOffset = (scrollSpeed * 3.0f).coerceIn(1.5f, 8.0f)
+                textPaint.alpha = (origAlpha * 0.22f).toInt()
+                drawStyledTextWithFrame(canvas, posX - blurOffset * 1.5f, py, item.text, textPaint, item, timeMs, w, h, drawFrame = false)
+                drawStyledTextWithFrame(canvas, posX - blurOffset * 0.75f, py, item.text, textPaint, item, timeMs, w, h, drawFrame = false)
+                textPaint.alpha = origAlpha
+
+                drawStyledTextWithFrame(canvas, posX, py, item.text, textPaint, item, timeMs, w, h, drawFrame = true)
             }
             "SCROLL_UP" -> {
                 // Teks Bergulir Naik (Movie End Credits Roll)
@@ -1285,7 +1319,14 @@ object AfterEffectsRenderer {
                 val totalSpan = h + totalTextHeight + 120f
                 val traveled = ((speedMs * 0.08f * scrollSpeed) % totalSpan)
                 val posY = (h + 60f) - traveled
-                drawStyledTextWithFrame(canvas, px, posY, item.text, textPaint, item, timeMs, w, h)
+
+                val origAlpha = textPaint.alpha
+                val blurOffset = (scrollSpeed * 2.0f).coerceIn(1.0f, 5.0f)
+                textPaint.alpha = (origAlpha * 0.22f).toInt()
+                drawStyledTextWithFrame(canvas, px, posY + blurOffset, item.text, textPaint, item, timeMs, w, h, drawFrame = false)
+                textPaint.alpha = origAlpha
+
+                drawStyledTextWithFrame(canvas, px, posY, item.text, textPaint, item, timeMs, w, h, drawFrame = true)
             }
             "SCROLL_DOWN" -> {
                 // Teks Bergulir Turun (Waterfall Down)
@@ -1294,7 +1335,14 @@ object AfterEffectsRenderer {
                 val totalSpan = h + totalTextHeight + 120f
                 val traveled = ((speedMs * 0.08f * scrollSpeed) % totalSpan)
                 val posY = (-totalTextHeight - 60f) + traveled
-                drawStyledTextWithFrame(canvas, px, posY, item.text, textPaint, item, timeMs, w, h)
+
+                val origAlpha = textPaint.alpha
+                val blurOffset = (scrollSpeed * 2.0f).coerceIn(1.0f, 5.0f)
+                textPaint.alpha = (origAlpha * 0.22f).toInt()
+                drawStyledTextWithFrame(canvas, px, posY - blurOffset, item.text, textPaint, item, timeMs, w, h, drawFrame = false)
+                textPaint.alpha = origAlpha
+
+                drawStyledTextWithFrame(canvas, px, posY, item.text, textPaint, item, timeMs, w, h, drawFrame = true)
             }
             "BOUNCE_VERTICAL" -> {
                 // Naik Turun Membal (Floating Up-Down)
@@ -1394,7 +1442,8 @@ object AfterEffectsRenderer {
         item: AeMotionText,
         timeMs: Long,
         w: Int,
-        h: Int
+        h: Int,
+        drawFrame: Boolean = true
     ) {
         if (text.isEmpty()) return
 
@@ -1408,7 +1457,7 @@ object AfterEffectsRenderer {
         val totalHeight = lines.size * lineHeight
 
         // 1. Gambar Template Frame / Bingkai di belakang teks
-        if (item.frameStyle != "NONE") {
+        if (drawFrame && item.frameStyle != "NONE") {
             drawTextFrame(canvas, x, y, maxLineWidth, totalHeight, item, w, h)
         }
 
@@ -2095,6 +2144,125 @@ object AfterEffectsRenderer {
                     canvas.drawLine(0f, gy, w.toFloat(), gy, guidePaint)
                 }
             }
+        }
+    }
+
+    // --- 20. Master Cinematic Finishing: Black Pro-Mist Highlight Bloom ---
+    private fun renderCinematicProMist(
+        canvas: Canvas,
+        output: Bitmap,
+        w: Int,
+        h: Int,
+        intensity: Float,
+        warmth: Float
+    ) {
+        if (w <= 0 || h <= 0) return
+        val dsW = (w / 4).coerceAtLeast(32)
+        val dsH = (h / 4).coerceAtLeast(32)
+
+        try {
+            // Downsample output snapshot for hardware bilinear bloom diffusion
+            val smallBmp = Bitmap.createScaledBitmap(output, dsW, dsH, true)
+
+            // Warm golden-amber highlight bloom tint
+            val alphaVal = (intensity * 170f).toInt().coerceIn(15, 210)
+            val bloomPaint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+                xfermode = PorterDuffXfermode(PorterDuff.Mode.SCREEN)
+                alpha = alphaVal
+                val g = (245 - warmth * 35).toInt().coerceIn(180, 255)
+                val b = (225 - warmth * 75).toInt().coerceIn(140, 255)
+                colorFilter = ColorMatrixColorFilter(ColorMatrix().apply {
+                    setScale(1.0f, g / 255f, b / 255f, 1.0f)
+                })
+            }
+
+            // Draw primary soft bloom pass
+            val destRect = Rect(0, 0, w, h)
+            canvas.drawBitmap(smallBmp, null, destRect, bloomPaint)
+
+            // Secondary subtle halation pass slightly expanded
+            bloomPaint.alpha = (alphaVal * 0.40f).toInt()
+            val destRectOffset = Rect(-6, -6, w + 6, h + 6)
+            canvas.drawBitmap(smallBmp, null, destRectOffset, bloomPaint)
+
+            smallBmp.recycle()
+        } catch (_: Exception) {
+            // Safe fallback
+        }
+    }
+
+    // --- 21. Master Cinematic Finishing: Organic Celluloid Film Micro-Texture ---
+    private fun renderCinematicFilmTexture(
+        canvas: Canvas,
+        w: Int,
+        h: Int,
+        timeMs: Long,
+        amount: Float
+    ) {
+        if (w <= 0 || h <= 0) return
+        val rand = Random(timeMs / 33L)
+        val step = 12
+        val grainPaint = Paint().apply {
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.OVERLAY)
+        }
+
+        val baseAlpha = (amount * 70f).toInt().coerceIn(8, 100)
+        var y = 0
+        while (y < h) {
+            var x = 0
+            while (x < w) {
+                val rndVal = rand.nextInt(100)
+                if (rndVal > 40) {
+                    val bright = if (rndVal > 72) 255 else 185
+                    grainPaint.color = Color.argb(baseAlpha, bright, bright, bright)
+                    val px = (x + rand.nextInt(step)).toFloat()
+                    val py = (y + rand.nextInt(step)).toFloat()
+                    if (rand.nextBoolean()) {
+                        canvas.drawRect(px, py, px + 2.0f, py + 2.0f, grainPaint)
+                    } else {
+                        canvas.drawPoint(px, py, grainPaint)
+                    }
+                }
+                x += step
+            }
+            y += step
+        }
+    }
+
+    // --- 22. Master Cinematic Finishing: Soft Optical Lens Vignette ---
+    private fun renderCinematicVignette(canvas: Canvas, w: Int, h: Int, amount: Float) {
+        if (w <= 0 || h <= 0) return
+        val cx = w / 2f
+        val cy = h / 2f
+        val radius = kotlin.math.hypot(cx.toDouble(), cy.toDouble()).toFloat()
+        val vignettePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                cx, cy, radius,
+                intArrayOf(
+                    Color.TRANSPARENT,
+                    Color.TRANSPARENT,
+                    Color.argb((amount * 110).toInt(), 12, 12, 18),
+                    Color.argb((amount * 230).toInt(), 0, 0, 0)
+                ),
+                floatArrayOf(0f, 0.45f, 0.75f, 1.0f),
+                Shader.TileMode.CLAMP
+            )
+        }
+        canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), vignettePaint)
+    }
+
+    // --- 23. Master Cinematic Finishing: 2.39:1 Cinemascope Anamorphic Letterbox ---
+    private fun renderCinematicLetterbox(canvas: Canvas, w: Int, h: Int) {
+        if (w <= 0 || h <= 0) return
+        val targetHeight = w / 2.39f
+        val matteHeight = (h - targetHeight) / 2f
+        if (matteHeight > 2f) {
+            val mattePaint = Paint().apply {
+                color = Color.BLACK
+                style = Paint.Style.FILL
+            }
+            canvas.drawRect(0f, 0f, w.toFloat(), matteHeight, mattePaint)
+            canvas.drawRect(0f, h - matteHeight, w.toFloat(), h.toFloat(), mattePaint)
         }
     }
 }

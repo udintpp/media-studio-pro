@@ -407,6 +407,21 @@ data class AeConfig(
     var blurAngle: Float = 45f,
     var blurDistance: Float = 15f,
 
+    // --- Cinematic Mastering & Natural Texture (Memperhalus Tampilan & Tekstur Alami) ---
+    var isCinematicProMistEnabled: Boolean = false, // Black Pro-Mist Highlight Bloom
+    var proMistIntensity: Float = 0.40f,           // 0.1f - 1.0f
+    var proMistWarmth: Float = 0.15f,              // 0.0f - 0.5f
+
+    var isCinematicFilmTextureEnabled: Boolean = false, // Multi-octave organic film stock grain
+    var cinematicTextureAmount: Float = 0.22f,          // 0.05f - 0.60f
+
+    var isCinematicVignetteEnabled: Boolean = false,    // Soft optical lens vignette
+    var cinematicVignetteAmount: Float = 0.40f,
+
+    var isCinematicLetterboxEnabled: Boolean = false,   // 2.39:1 Cinemascope cinema bars
+
+    var exportFramerate: Int = 60, // 60 FPS (Ultra Smooth) atau 30 FPS
+
     var isAudioSpectrumEnabled: Boolean = false,
 
     // Layer Blending

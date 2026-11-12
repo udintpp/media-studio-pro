@@ -98,6 +98,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     private var lastPreviewUpdateMs: Long = 0L
 
     private val aeConfig = AeConfig()
+    private var encodedFrameIndex = 0L
 
     private enum class DragTarget {
         MOTION_TEXT, STICKER, OVERLAY_MEDIA
@@ -576,6 +577,10 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             showParticleSelectionDialog()
         }
 
+        binding.btnVfxCinematic.setOnClickListener {
+            showCinematicMasteringDialog()
+        }
+
         binding.btnVfxFilmGrain.setOnClickListener {
             aeConfig.isFilmGrainEnabled = !aeConfig.isFilmGrainEnabled
             activeSlider = ActiveVfxSlider.GRAIN
@@ -729,13 +734,18 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             aeConfig.isUnmultEnabled,
             aeConfig.isContourPaintEnabled,
             aeConfig.isCurlNoiseEnabled,
-            aeConfig.isDepthOfFieldEnabled
+            aeConfig.isDepthOfFieldEnabled,
+            aeConfig.isCinematicProMistEnabled,
+            aeConfig.isCinematicFilmTextureEnabled,
+            aeConfig.isCinematicVignetteEnabled,
+            aeConfig.isCinematicLetterboxEnabled
         ).count { it }
         binding.tvActiveVfxBadge.text = "⚡ AE Engine: $activeCount Efek Aktif"
         binding.btnVfxOverlay.text = if (aeConfig.mediaOverlays.isNotEmpty()) "🖼️ Tumpuk (${aeConfig.mediaOverlays.size})" else "🖼️ Tumpuk Video/Foto"
         val activeText = aeConfig.motionTexts.lastOrNull()
         binding.btnVfxMotionText.text = if (activeText != null) "🔤 Teks: ${activeText.style}" else "🔤 Teks & Gerak"
         binding.btnVfxTextStyle.text = if (activeText != null && activeText.frameStyle != "NONE") "✨ Frame: ${activeText.frameStyle}" else "✨ Gaya, 3D/2D & Frame"
+        binding.btnVfxCinematic.text = if (aeConfig.isCinematicProMistEnabled || aeConfig.isCinematicFilmTextureEnabled || aeConfig.isCinematicVignetteEnabled || aeConfig.isCinematicLetterboxEnabled) "🎬 Sinematik: ON" else "🎬 Sinematik & Tekstur"
     }
 
     private fun updateKeyframeCount() {
@@ -2599,15 +2609,32 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             try {
                 // If format is GIF or image slideshow, render frame sequence
                 if (format == VideoExportFormat.GIF) {
-                    val totalFrames = 30
+                    val gifFps = 25
+                    val totalFrames = ((durationMs / 1000f) * gifFps).toInt().coerceIn(15, 150)
                     val frameList = mutableListOf<Bitmap>()
                     val stepMs = durationMs / totalFrames
 
                     val exportCfg = aeConfig.copy(isGuideGridEnabled = false)
+                    var lastDecodedFrame: Bitmap = base
+                    val videoRetriever = if (isVideo) {
+                        MediaMetadataRetriever().apply { setDataSource(this@AfterEffectsStudioActivity, uri) }
+                    } else null
+
                     for (i in 0 until totalFrames) {
-                        val t = i * stepMs
+                        val t = (i * stepMs).coerceIn(0L, durationMs)
+                        val currentBase = if (videoRetriever != null) {
+                            val frame = videoRetriever.getFrameAtTime(t * 1000L, MediaMetadataRetriever.OPTION_CLOSEST)
+                            if (frame != null) {
+                                lastDecodedFrame = frame
+                                frame
+                            } else {
+                                lastDecodedFrame
+                            }
+                        } else {
+                            base
+                        }
                         updateVideoOverlayFrames(exportCfg, t)
-                        val rendered = AfterEffectsRenderer.renderFrame(base, t, exportCfg)
+                        val rendered = AfterEffectsRenderer.renderFrame(currentBase, t, exportCfg)
                         val scaled = if (resolution.width > 0 && resolution.width < 1000) {
                             val sc = resolution.width.toFloat() / rendered.width
                             Bitmap.createScaledBitmap(rendered, resolution.width, (rendered.height * sc).toInt(), true)
@@ -2619,6 +2646,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             binding.tvVfxProgressPercent.text = "Rendering frame ${i + 1}/$totalFrames..."
                         }
                     }
+                    videoRetriever?.release()
 
                     val fos = FileOutputStream(outputFile)
                     com.udintpp.mediastudio.engine.video.VideoChromaKeyEngine.writeAnimatedGif(frameList, delayMs = stepMs.toInt(), out = fos)
@@ -2652,20 +2680,26 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             aeConfig.isUnmultEnabled ||
                             aeConfig.isContourPaintEnabled ||
                             aeConfig.isCurlNoiseEnabled ||
-                            aeConfig.isDepthOfFieldEnabled
+                            aeConfig.isDepthOfFieldEnabled ||
+                            aeConfig.isCinematicProMistEnabled ||
+                            aeConfig.isCinematicFilmTextureEnabled ||
+                            aeConfig.isCinematicVignetteEnabled ||
+                            aeConfig.isCinematicLetterboxEnabled ||
+                            aeConfig.exportFramerate >= 60
 
                     if (!isVideo || hasActiveVfx) {
-                        // Render full After Effects composition (with Overlays, Text, Particles, VFX) using hardware MediaCodec
+                        // Render full After Effects composition using hardware MediaCodec with 60 FPS ultra-smooth monotonic PTS
                         val width = if (resolution.width > 0) resolution.width else 1920
                         val height = if (resolution.height > 0) resolution.height else 1080
-                        val fps = 30
-                        val totalFrames = ((durationMs / 1000f) * fps).toInt().coerceIn(15, 600)
-                        val stepMs = durationMs / totalFrames
+                        val fps = if (aeConfig.exportFramerate >= 60) 60 else 30
+                        val totalFrames = ((durationMs / 1000f) * fps).toInt().coerceAtLeast(15)
+                        encodedFrameIndex = 0L
 
                         val mimeType = android.media.MediaFormat.MIMETYPE_VIDEO_AVC
+                        val bitrate = (resolution.bitrateMbps * 1.25f * 1_000_000).toInt()
                         val codecFormat = android.media.MediaFormat.createVideoFormat(mimeType, width, height).apply {
                             setInteger(android.media.MediaFormat.KEY_COLOR_FORMAT, android.media.MediaCodecInfo.CodecCapabilities.COLOR_FormatSurface)
-                            setInteger(android.media.MediaFormat.KEY_BIT_RATE, resolution.bitrateMbps * 1_000_000)
+                            setInteger(android.media.MediaFormat.KEY_BIT_RATE, bitrate)
                             setInteger(android.media.MediaFormat.KEY_FRAME_RATE, fps)
                             setInteger(android.media.MediaFormat.KEY_I_FRAME_INTERVAL, 1)
                         }
@@ -2686,10 +2720,18 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                         } else null
 
                         val exportCfg = aeConfig.copy(isGuideGridEnabled = false)
+                        var lastDecodedFrame: Bitmap = base
+
                         for (f in 0 until totalFrames) {
-                            val t = f * stepMs
+                            val t = (f * 1000.0f / fps).toLong().coerceIn(0L, durationMs)
                             val currentBase = if (videoRetriever != null) {
-                                videoRetriever.getFrameAtTime(t * 1000L, MediaMetadataRetriever.OPTION_CLOSEST) ?: base
+                                val frame = videoRetriever.getFrameAtTime(t * 1000L, MediaMetadataRetriever.OPTION_CLOSEST)
+                                if (frame != null) {
+                                    lastDecodedFrame = frame
+                                    frame
+                                } else {
+                                    lastDecodedFrame
+                                }
                             } else {
                                 base
                             }
@@ -2700,17 +2742,17 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             canvas.drawBitmap(rendered, null, destRect, paint)
                             inputSurface.unlockCanvasAndPost(canvas)
 
-                            drainCodec(encoder, muxer, bufferInfo, false) { track -> videoTrack = track }
+                            drainCodec(encoder, muxer, bufferInfo, false, videoTrack, fps) { track -> videoTrack = track }
                             val pct = (f * 100 / totalFrames).coerceIn(0, 99)
                             withContext(Dispatchers.Main) {
-                                binding.tvVfxProgressPercent.text = "Rendering VFX & Overlay: $pct%"
+                                binding.tvVfxProgressPercent.text = "Rendering VFX (${fps}fps) & Tekstur: $pct%"
                             }
                         }
 
                         videoRetriever?.release()
 
                         encoder.signalEndOfInputStream()
-                        drainCodec(encoder, muxer, bufferInfo, true) { track -> videoTrack = track }
+                        drainCodec(encoder, muxer, bufferInfo, true, videoTrack, fps) { track -> videoTrack = track }
                         encoder.stop()
                         encoder.release()
                         inputSurface.release()
@@ -2769,8 +2811,11 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         muxer: android.media.MediaMuxer,
         bufferInfo: android.media.MediaCodec.BufferInfo,
         endOfStream: Boolean,
+        videoTrack: Int,
+        fps: Int,
         onMuxerStart: (Int) -> Unit
     ) {
+        var currentTrack = videoTrack
         val timeoutUs = 10_000L
         while (true) {
             val status = encoder.dequeueOutputBuffer(bufferInfo, timeoutUs)
@@ -2778,19 +2823,21 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                 if (!endOfStream) break
             } else if (status == android.media.MediaCodec.INFO_OUTPUT_FORMAT_CHANGED) {
                 val newFormat = encoder.outputFormat
-                val track = muxer.addTrack(newFormat)
+                currentTrack = muxer.addTrack(newFormat)
                 muxer.start()
-                onMuxerStart(track)
+                onMuxerStart(currentTrack)
             } else if (status >= 0) {
                 val encodedData = encoder.getOutputBuffer(status)
                 if (encodedData != null) {
                     if ((bufferInfo.flags and android.media.MediaCodec.BUFFER_FLAG_CODEC_CONFIG) != 0) {
                         bufferInfo.size = 0
                     }
-                    if (bufferInfo.size != 0) {
+                    if (bufferInfo.size != 0 && currentTrack != -1) {
+                        // Enforce monotonic, perfectly equidistant presentation timestamps for buttery smooth 60fps
+                        bufferInfo.presentationTimeUs = (encodedFrameIndex++ * 1_000_000L) / fps
                         encodedData.position(bufferInfo.offset)
                         encodedData.limit(bufferInfo.offset + bufferInfo.size)
-                        muxer.writeSampleData(0, encodedData, bufferInfo)
+                        muxer.writeSampleData(currentTrack, encodedData, bufferInfo)
                     }
                 }
                 encoder.releaseOutputBuffer(status, false)
@@ -2817,6 +2864,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             "✨ Partikel Bling, Kunang-Kunang, Bintang, Emas & Sparks",
             "🎛️ Parameter Partikel (Warna, Arah Acak & Turbulensi)",
             "🎞️ Film Grain 35mm Real Stock",
+            "🎬 Mastering Sinematik & Tekstur Alami (Pro-Mist, 35mm Grain, 60fps)",
             "🔤 Motion Text & Teks Berjalan",
             "📋 Template Teks Siap Pakai (News Ticker, Credits, 3D, Frames)",
             "✨ Gaya Huruf 3D/2D, Kilauan & Frame Teks",
@@ -2849,20 +2897,21 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     9 -> showParticleSelectionDialog()
                     10 -> showParticleSettingsDialog()
                     11 -> binding.btnVfxFilmGrain.performClick()
-                    12 -> showMotionTextDialog()
-                    13 -> showTextPresetTemplatesDialog()
-                    14 -> showTextStyleDialog()
-                    15 -> showStickerDialog()
-                    16 -> binding.btnVfxOverlay.performClick()
-                    17 -> binding.btnVfxAudioSpectrum.performClick()
-                    18 -> showBlendModeDialog()
-                    19 -> showUnmultDialog()
-                    20 -> showContourDialog()
-                    21 -> showCurlNoiseDialog()
-                    22 -> showDepthOfFieldDialog()
-                    23 -> showGuidesDialog()
-                    24 -> takeSnapshot()
-                    25 -> showCompSettingsDialog()
+                    12 -> showCinematicMasteringDialog()
+                    13 -> showMotionTextDialog()
+                    14 -> showTextPresetTemplatesDialog()
+                    15 -> showTextStyleDialog()
+                    16 -> showStickerDialog()
+                    17 -> binding.btnVfxOverlay.performClick()
+                    18 -> binding.btnVfxAudioSpectrum.performClick()
+                    19 -> showBlendModeDialog()
+                    20 -> showUnmultDialog()
+                    21 -> showContourDialog()
+                    22 -> showCurlNoiseDialog()
+                    23 -> showDepthOfFieldDialog()
+                    24 -> showGuidesDialog()
+                    25 -> takeSnapshot()
+                    26 -> showCompSettingsDialog()
                 }
             }
             .setNegativeButton("Tutup", null)
@@ -3107,6 +3156,106 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     }
                 }
             }
+            .show()
+    }
+
+    private fun showCinematicMasteringDialog() {
+        val options = arrayOf(
+            if (aeConfig.isCinematicProMistEnabled) "✨ Black Pro-Mist Bloom: [ON]" else "✨ Black Pro-Mist Bloom: [OFF]",
+            if (aeConfig.isCinematicFilmTextureEnabled) "🎞️ Celluloid 35mm Micro-Texture: [ON]" else "🎞️ Celluloid 35mm Micro-Texture: [OFF]",
+            if (aeConfig.isCinematicVignetteEnabled) "🕶️ Soft Lens Vignette: [ON]" else "🕶️ Soft Lens Vignette: [OFF]",
+            if (aeConfig.isCinematicLetterboxEnabled) "🎬 2.39:1 Cinemascope Letterbox: [ON]" else "🎬 2.39:1 Cinemascope Letterbox: [OFF]",
+            if (aeConfig.exportFramerate >= 60) "⚡ Export Rate: 60 FPS (Ultra-Mulus Halus)" else "⚡ Export Rate: 30 FPS (Standar)",
+            "🎬 Preset: Hollywood Cinema (Bloom + 35mm + Vignette + 2.39:1 + 60fps)",
+            "🎬 Preset: Vintage 35mm Film (Heavy Organic Grain + Warm Glow)",
+            "🎬 Preset: Dreamy Soft Portrait (High Pro-Mist Bloom + Halasi Lembut)",
+            "🎬 Preset: Clean Film Master (Subtle Organic Texture + 60fps)",
+            "❌ Matikan Semua Efek Sinematik"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("🎬 Cinematic Mastering & Tekstur Alami")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        aeConfig.isCinematicProMistEnabled = !aeConfig.isCinematicProMistEnabled
+                        Toast.makeText(this, "Pro-Mist Bloom: ${if (aeConfig.isCinematicProMistEnabled) "Aktif" else "Mati"}", Toast.LENGTH_SHORT).show()
+                    }
+                    1 -> {
+                        aeConfig.isCinematicFilmTextureEnabled = !aeConfig.isCinematicFilmTextureEnabled
+                        Toast.makeText(this, "Tekstur Alami 35mm: ${if (aeConfig.isCinematicFilmTextureEnabled) "Aktif" else "Mati"}", Toast.LENGTH_SHORT).show()
+                    }
+                    2 -> {
+                        aeConfig.isCinematicVignetteEnabled = !aeConfig.isCinematicVignetteEnabled
+                        Toast.makeText(this, "Lens Vignette: ${if (aeConfig.isCinematicVignetteEnabled) "Aktif" else "Mati"}", Toast.LENGTH_SHORT).show()
+                    }
+                    3 -> {
+                        aeConfig.isCinematicLetterboxEnabled = !aeConfig.isCinematicLetterboxEnabled
+                        Toast.makeText(this, "Cinemascope Letterbox: ${if (aeConfig.isCinematicLetterboxEnabled) "Aktif" else "Mati"}", Toast.LENGTH_SHORT).show()
+                    }
+                    4 -> {
+                        aeConfig.exportFramerate = if (aeConfig.exportFramerate >= 60) 30 else 60
+                        Toast.makeText(this, "Framerate ekspor diatur: ${aeConfig.exportFramerate} FPS", Toast.LENGTH_SHORT).show()
+                    }
+                    5 -> {
+                        aeConfig.isCinematicProMistEnabled = true
+                        aeConfig.proMistIntensity = 0.40f
+                        aeConfig.proMistWarmth = 0.15f
+                        aeConfig.isCinematicFilmTextureEnabled = true
+                        aeConfig.cinematicTextureAmount = 0.22f
+                        aeConfig.isCinematicVignetteEnabled = true
+                        aeConfig.cinematicVignetteAmount = 0.35f
+                        aeConfig.isCinematicLetterboxEnabled = true
+                        aeConfig.exportFramerate = 60
+                        Toast.makeText(this, "Preset Hollywood Cinema diaktifkan (60 FPS Mulus)", Toast.LENGTH_SHORT).show()
+                    }
+                    6 -> {
+                        aeConfig.isCinematicProMistEnabled = true
+                        aeConfig.proMistIntensity = 0.35f
+                        aeConfig.proMistWarmth = 0.25f
+                        aeConfig.isCinematicFilmTextureEnabled = true
+                        aeConfig.cinematicTextureAmount = 0.38f
+                        aeConfig.isCinematicVignetteEnabled = true
+                        aeConfig.cinematicVignetteAmount = 0.45f
+                        aeConfig.isCinematicLetterboxEnabled = false
+                        aeConfig.exportFramerate = 60
+                        Toast.makeText(this, "Preset Vintage 35mm Film diaktifkan", Toast.LENGTH_SHORT).show()
+                    }
+                    7 -> {
+                        aeConfig.isCinematicProMistEnabled = true
+                        aeConfig.proMistIntensity = 0.65f
+                        aeConfig.proMistWarmth = 0.10f
+                        aeConfig.isCinematicFilmTextureEnabled = false
+                        aeConfig.isCinematicVignetteEnabled = true
+                        aeConfig.cinematicVignetteAmount = 0.25f
+                        aeConfig.isCinematicLetterboxEnabled = false
+                        aeConfig.exportFramerate = 60
+                        Toast.makeText(this, "Preset Dreamy Soft diaktifkan", Toast.LENGTH_SHORT).show()
+                    }
+                    8 -> {
+                        aeConfig.isCinematicProMistEnabled = true
+                        aeConfig.proMistIntensity = 0.25f
+                        aeConfig.proMistWarmth = 0.08f
+                        aeConfig.isCinematicFilmTextureEnabled = true
+                        aeConfig.cinematicTextureAmount = 0.15f
+                        aeConfig.isCinematicVignetteEnabled = false
+                        aeConfig.isCinematicLetterboxEnabled = false
+                        aeConfig.exportFramerate = 60
+                        Toast.makeText(this, "Preset Clean Film Master diaktifkan (60 FPS)", Toast.LENGTH_SHORT).show()
+                    }
+                    9 -> {
+                        aeConfig.isCinematicProMistEnabled = false
+                        aeConfig.isCinematicFilmTextureEnabled = false
+                        aeConfig.isCinematicVignetteEnabled = false
+                        aeConfig.isCinematicLetterboxEnabled = false
+                        aeConfig.exportFramerate = 60
+                        Toast.makeText(this, "Efek sinematik dimatikan", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Tutup", null)
             .show()
     }
 
