@@ -905,7 +905,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             "🌧️ Rain & Mist (Hujan Sinematik)",
             "❄️ Snow Drift (Butiran Salju Lembut)",
             "🔮 Bokeh Orbs (Cahaya Aperture Optik)",
-            "🎆 Kembang Api Tahun Baru (New Year Fireworks)",
+            "🎆 Kembang Api Spektakuler & Willow (Realistic Fireworks)",
             "🕌 Ketupat Lebaran (Eid Mubarak Festive)"
         )
         AlertDialog.Builder(this)

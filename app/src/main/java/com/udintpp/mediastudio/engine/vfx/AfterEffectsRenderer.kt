@@ -636,6 +636,10 @@ object AfterEffectsRenderer {
         config: AeConfig
     ) {
         val type = config.activeParticleType ?: return
+        if (type == AeEffectType.PARTICLE_FIREWORKS) {
+            renderRealisticFireworks(canvas, w, h, timeMs, config)
+            return
+        }
         val count = config.particleCount.coerceIn(10, 300)
         val globalSpeed = config.particleSpeed * config.effectSpeed
         val baseSize = config.particleSize
@@ -841,128 +845,7 @@ object AfterEffectsRenderer {
                     pPaint.style = Paint.Style.FILL
                 }
                 AeEffectType.PARTICLE_FIREWORKS -> {
-                    // New Year Fireworks: Rocket launch + Radial burst + Glittering embers + Gravity fall
-                    val sparksPerShell = 16
-                    val shellId = i / sparksPerShell
-                    val sparkId = i % sparksPerShell
-
-                    val shellSeed = (shellId * 1664525L + 1013904223L)
-                    val shellHashX = ((shellSeed ushr 16 and 0xFFFF) % 1000) / 1000f
-                    val shellHashY = ((shellSeed ushr 8 and 0xFFFF) % 1000) / 1000f
-
-                    val cycleSec = 2.8f / globalSpeed.coerceAtLeast(0.2f)
-                    val shellStagger = (shellId * 0.55f)
-                    val shellTime = (t + shellStagger) % cycleSec
-                    val shellProgress = shellTime / cycleSec // 0.0 to 1.0
-
-                    val burstCenterX = (0.15f + shellHashX * 0.7f) * w
-                    val burstCenterY = (0.15f + shellHashY * 0.4f) * h
-
-                    if (shellProgress < 0.32f) {
-                        // Phase 1: Rocket Launch ascending from bottom to detonation center
-                        val launchP = shellProgress / 0.32f
-                        val rocketY = h - (h - burstCenterY) * launchP
-                        val rocketX = burstCenterX + sin(launchP * 6.28f + shellId.toFloat()) * 8f
-
-                        if (sparkId == 0) {
-                            // Rocket Head Spark
-                            val rocketPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                color = Color.parseColor("#FEF08A")
-                                xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
-                            }
-                            canvas.drawCircle(rocketX, rocketY, 5.5f * indivSize, rocketPaint)
-
-                            // Smoke and flame trail behind ascending rocket
-                            val trailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                strokeWidth = 3.5f * indivSize
-                                strokeCap = Paint.Cap.ROUND
-                                shader = LinearGradient(
-                                    rocketX, rocketY, rocketX, rocketY + 65f * indivSize,
-                                    intArrayOf(Color.WHITE, Color.parseColor("#F59E0B"), Color.TRANSPARENT),
-                                    floatArrayOf(0f, 0.4f, 1f),
-                                    Shader.TileMode.CLAMP
-                                )
-                            }
-                            canvas.drawLine(rocketX, rocketY, rocketX, rocketY + 65f * indivSize, trailPaint)
-                            drawStarGlint(canvas, rocketX, rocketY, 6f * indivSize, Color.WHITE, 255)
-                        } else {
-                            // Droplet sparks trailing rocket
-                            val trailOffset = (sparkId.toFloat() / sparksPerShell) * 45f * indivSize
-                            val dropAlpha = ((1f - (sparkId.toFloat() / sparksPerShell)) * 180).toInt()
-                            pPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
-                            pPaint.color = Color.parseColor("#FDE047")
-                            pPaint.alpha = dropAlpha
-                            canvas.drawCircle(
-                                rocketX + (hash0 - 0.5f) * 6f * indivSize,
-                                rocketY + trailOffset,
-                                1.8f * indivSize,
-                                pPaint
-                            )
-                        }
-                    } else {
-                        // Phase 2: Spectacular Radial Burst Explosion!
-                        val burstP = (shellProgress - 0.32f) / 0.68f // 0.0 to 1.0
-                        val burstFade = (1f - burstP).coerceIn(0f, 1f)
-                        val sparkAlpha = (burstFade * 255).toInt().coerceIn(0, 255)
-
-                        // Central Detonation Flash
-                        if (sparkId == 0 && burstP < 0.18f) {
-                            val flashAlpha = ((1f - (burstP / 0.18f)) * 220).toInt()
-                            val flashRadius = (50f + burstP * 120f) * indivSize
-                            val flashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                                xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
-                                shader = RadialGradient(
-                                    burstCenterX, burstCenterY, flashRadius,
-                                    intArrayOf(Color.WHITE, Color.argb(flashAlpha, 254, 240, 138), Color.TRANSPARENT),
-                                    floatArrayOf(0f, 0.35f, 1f),
-                                    Shader.TileMode.CLAMP
-                                )
-                            }
-                            canvas.drawCircle(burstCenterX, burstCenterY, flashRadius, flashPaint)
-                        }
-
-                        // Radial spark projectile
-                        val baseAngle = (sparkId.toFloat() / sparksPerShell) * 2f * Math.PI.toFloat()
-                        val angleJitter = (hash1 - 0.5f) * 0.3f
-                        val angle = baseAngle + angleJitter
-                        val burstRadius = sin(burstP * (Math.PI.toFloat() / 2f)) * (110f + shellHashY * 110f) * indivSize
-                        val gravityDrop = (burstP * burstP) * 55f * indivSize
-                        val sparkX = burstCenterX + cos(angle) * burstRadius + (hash2 - 0.5f) * 12f
-                        val sparkY = burstCenterY + sin(angle) * burstRadius + gravityDrop
-
-                        val festiveColors = intArrayOf(
-                            Color.parseColor("#FF2D55"), // Crimson Ruby
-                            Color.parseColor("#FFD700"), // Pure Gold
-                            Color.parseColor("#00F0FF"), // Electric Cyan
-                            Color.parseColor("#10B981"), // Emerald Green
-                            Color.parseColor("#A855F7"), // Royal Violet
-                            Color.parseColor("#FF8C00"), // Radiant Orange
-                            Color.parseColor("#FFFFFF")  // Pure White
-                        )
-                        val sparkColor = if (config.particleColorPalette != "MULTI") {
-                            getParticlePaletteColor(config.particleColorPalette, seed, timeMs)
-                        } else {
-                            festiveColors[shellId % festiveColors.size]
-                        }
-
-                        pPaint.xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
-                        pPaint.color = sparkColor
-                        pPaint.alpha = sparkAlpha
-                        canvas.drawCircle(sparkX, sparkY, (3.5f * burstFade + 1.2f) * indivSize, pPaint)
-
-                        // Twinkling Star Glints on burst tips
-                        if (sparkAlpha > 50 && (i % 2 == 0 || config.isParticleStarGlintEnabled)) {
-                            drawStarGlint(
-                                canvas,
-                                sparkX,
-                                sparkY,
-                                (5.0f * burstFade + 1f) * indivSize,
-                                sparkColor,
-                                sparkAlpha,
-                                (t * 180f + sparkId * 45f)
-                            )
-                        }
-                    }
+                    // Handled exclusively by renderRealisticFireworks for hyper-realistic physics & wide spread
                 }
                 AeEffectType.PARTICLE_KETUPAT -> {
                     // Eid Mubarak Festive Ketupat: Woven emerald-gold diamond with fluttering janur ribbon tails
@@ -1062,6 +945,291 @@ object AfterEffectsRenderer {
                     }
                 }
                 else -> {}
+            }
+        }
+    }
+
+    /**
+     * Renders hyper-realistic, grand celebration aerial fireworks (pyrotechnics).
+     * Features:
+     * - Multi-shell staggered choreography (3 to 8 simultaneous bursting shells)
+     * - Grand screen-filling radial spread (35% to 55% of min screen dimension)
+     * - Ballistic physics: instantaneous explosive expansion with aerodynamic drag deceleration
+     * - Weeping willow / Kamuro gravity curvature (quadratic drop t^2)
+     * - Real luminous motion streaks / comet tails (tapered lines, NOT cartoon dots)
+     * - Multi-tier shell construction: Chrysanthemum/Peony outer sphere + contrasting inner golden pistil
+     * - High-temperature incandescent core (blazing white-hot center + colored halation)
+     * - Secondary crackling stars ("Dragon Eggs" / popping time-rain) at late burst phase
+     * - Ascending rocket launch with fiery exhaust and drifting embers
+     */
+    private fun renderRealisticFireworks(
+        canvas: Canvas,
+        w: Int,
+        h: Int,
+        timeMs: Long,
+        config: AeConfig
+    ) {
+        val minDim = min(w, h).toFloat()
+        val globalSpeed = (config.particleSpeed * config.effectSpeed).coerceIn(0.2f, 3.0f)
+        val tSec = timeMs / 1000f
+
+        // Total concurrent shells active in the sky based on particle count
+        val totalShells = when {
+            config.particleCount <= 35 -> 3
+            config.particleCount <= 90 -> 5
+            config.particleCount <= 160 -> 6
+            else -> 8
+        }
+
+        // Each shell has a full lifecycle of ~3.4 seconds (launch -> flash -> burst -> willow droop)
+        val cycleSec = 3.4f / globalSpeed
+        val sparksPerShell = when {
+            config.particleCount <= 35 -> 55
+            config.particleCount <= 90 -> 75
+            else -> 95
+        }
+
+        // Shared paint objects to eliminate GC pressure
+        val streakPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            strokeCap = Paint.Cap.ROUND
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+        }
+        val corePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+        }
+        val flashPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.FILL
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.ADD)
+        }
+
+        // Professional chemical pyrotechnic palettes
+        val shellPalettes = arrayOf(
+            // 0: Shimmering Gold Kamuro (Weeping Willow)
+            intArrayOf(Color.parseColor("#FFFBEB"), Color.parseColor("#FDE047"), Color.parseColor("#EAB308"), Color.parseColor("#B45309")),
+            // 1: Strontium Ruby Crimson + White
+            intArrayOf(Color.parseColor("#FFFFFF"), Color.parseColor("#FF2D55"), Color.parseColor("#E11D48"), Color.parseColor("#BE123C")),
+            // 2: Copper Turquoise & Electric Cyan + Lemon Core
+            intArrayOf(Color.parseColor("#FFFFFF"), Color.parseColor("#00F0FF"), Color.parseColor("#06B6D4"), Color.parseColor("#0284C7")),
+            // 3: Barium Emerald + Golden Halation
+            intArrayOf(Color.parseColor("#FFFFFF"), Color.parseColor("#10B981"), Color.parseColor("#059669"), Color.parseColor("#047857")),
+            // 4: Royal Violet / Cesium Magenta + Amber
+            intArrayOf(Color.parseColor("#FFFFFF"), Color.parseColor("#C084FC"), Color.parseColor("#A855F7"), Color.parseColor("#7E22CE")),
+            // 5: Radiant Tangerine / Sodium Sunset
+            intArrayOf(Color.parseColor("#FFFFFF"), Color.parseColor("#FB923C"), Color.parseColor("#F97316"), Color.parseColor("#C2410C")),
+            // 6: Pure Magnesium Silver Sparklers
+            intArrayOf(Color.parseColor("#FFFFFF"), Color.parseColor("#F8FAFC"), Color.parseColor("#CBD5E1"), Color.parseColor("#94A3B8"))
+        )
+
+        for (s in 0 until totalShells) {
+            // Stagger each shell evenly so sky is constantly alive with action
+            val stagger = (s.toFloat() / totalShells) * cycleSec
+            val totalTime = tSec + stagger
+            val cycleIndex = (totalTime / cycleSec).toLong()
+            val shellTime = totalTime % cycleSec
+            val progress = shellTime / cycleSec // 0.0 to 1.0
+
+            // Deterministic hash based on cycle index and shell slot
+            val shellSeed = (cycleIndex * 6364136223846793005L + s * 1442695040888963407L)
+            val h0 = ((shellSeed ushr 16 and 0xFFFF) % 10000) / 10000f
+            val h1 = ((shellSeed ushr 8 and 0xFFFF) % 10000) / 10000f
+            val h2 = ((shellSeed ushr 4 and 0xFFFF) % 10000) / 10000f
+            val h3 = (abs(shellSeed % 10000)) / 10000f
+
+            // Detonation altitude and position (high in the sky, 14% to 48% from top, 14% to 86% across)
+            val burstCenterX = (0.14f + h0 * 0.72f) * w
+            val burstCenterY = (0.14f + h1 * 0.34f) * h
+
+            // Launch pad at bottom
+            val launchPadX = burstCenterX + (h2 - 0.5f) * (w * 0.30f)
+            val launchPadY = h.toFloat() + 30f
+
+            // Choose color palette for this shell
+            val activePalette = if (config.particleColorPalette != "MULTI") {
+                val baseCol = getParticlePaletteColor(config.particleColorPalette, shellSeed, timeMs)
+                intArrayOf(Color.WHITE, baseCol, baseCol, Color.parseColor("#F59E0B"))
+            } else {
+                shellPalettes[((s + cycleIndex.toInt()) % shellPalettes.size + shellPalettes.size) % shellPalettes.size]
+            }
+
+            // --- PHASE 1: Rocket Ascent (0.00 to 0.26) ---
+            if (progress < 0.26f) {
+                val lp = progress / 0.26f
+                // Upward ballistic deceleration: fast takeoff, slows down at apex
+                val easeY = 1f - (1f - lp) * (1f - lp)
+                val curY = launchPadY - (launchPadY - burstCenterY) * easeY
+                val curX = launchPadX + (burstCenterX - launchPadX) * lp + sin(lp * 3.14159f) * ((h3 - 0.5f) * 40f)
+
+                // Previous point for rocket tail streak
+                val prevLp = (lp - 0.045f).coerceAtLeast(0f)
+                val prevEaseY = 1f - (1f - prevLp) * (1f - prevLp)
+                val prevY = launchPadY - (launchPadY - burstCenterY) * prevEaseY
+                val prevX = launchPadX + (burstCenterX - launchPadX) * prevLp + sin(prevLp * 3.14159f) * ((h3 - 0.5f) * 40f)
+
+                // Draw luminous fiery rocket propulsion line
+                streakPaint.strokeWidth = 3.6f * config.particleSize
+                streakPaint.color = Color.parseColor("#FDE047")
+                streakPaint.alpha = 230
+                canvas.drawLine(prevX, prevY, curX, curY, streakPaint)
+
+                // Blazing rocket motor head
+                corePaint.color = Color.WHITE
+                corePaint.alpha = 255
+                canvas.drawCircle(curX, curY, 4.0f * config.particleSize, corePaint)
+
+                // Golden trailing sparks behind ascending rocket
+                for (trailSpark in 1..6) {
+                    val dropDist = trailSpark * (14f * config.particleSize)
+                    val sparkWobble = sin(tSec * 25f + trailSpark * 2.1f) * (4.5f * config.particleSize)
+                    val sY = curY + dropDist
+                    val sX = curX + sparkWobble
+                    val sparkAlpha = ((1f - trailSpark / 7f) * 200).toInt()
+                    corePaint.color = Color.parseColor("#F59E0B")
+                    corePaint.alpha = sparkAlpha
+                    canvas.drawCircle(sX, sY, (2.2f - trailSpark * 0.25f).coerceAtLeast(0.8f) * config.particleSize, corePaint)
+                }
+
+                continue
+            }
+
+            // --- PHASE 2: Detonation Flash (0.26 to 0.33) ---
+            val burstP = ((progress - 0.26f) / 0.74f).coerceIn(0f, 1f)
+
+            if (burstP < 0.12f) {
+                val flashFrac = burstP / 0.12f
+                val flashAlpha = ((1f - flashFrac) * 240).toInt().coerceIn(0, 255)
+                val flashRadius = (35f + flashFrac * 160f) * config.particleSize * (minDim / 720f).coerceAtLeast(0.7f)
+
+                // Intense white-hot core flash
+                flashPaint.shader = RadialGradient(
+                    burstCenterX, burstCenterY, flashRadius,
+                    intArrayOf(Color.WHITE, activePalette[1], Color.TRANSPARENT),
+                    floatArrayOf(0f, 0.32f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+                flashPaint.alpha = flashAlpha
+                canvas.drawCircle(burstCenterX, burstCenterY, flashRadius, flashPaint)
+                flashPaint.shader = null
+
+                // Ambient night sky illumination (gives realistic atmospheric radiance)
+                val ambientRadius = flashRadius * 3.2f
+                flashPaint.shader = RadialGradient(
+                    burstCenterX, burstCenterY, ambientRadius,
+                    intArrayOf(Color.argb((flashAlpha * 0.35f).toInt(), Color.red(activePalette[1]), Color.green(activePalette[1]), Color.blue(activePalette[1])), Color.TRANSPARENT),
+                    floatArrayOf(0f, 1f),
+                    Shader.TileMode.CLAMP
+                )
+                canvas.drawCircle(burstCenterX, burstCenterY, ambientRadius, flashPaint)
+                flashPaint.shader = null
+            }
+
+            // --- PHASE 3: Massive Aerial Radial Burst & Weeping Willow Embers (0.26 to 1.0) ---
+            // Ballistic expansion curve: high initial outward snap, followed by air drag deceleration
+            val expansion = 1f - (1f - burstP).let { it * it * (it * 0.6f + 0.4f) }
+            val trailDelay = (0.05f * (1f - burstP * 0.7f)).coerceIn(0.015f, 0.055f)
+            val prevBurstP = (burstP - trailDelay).coerceAtLeast(0f)
+            val prevExpansion = 1f - (1f - prevBurstP).let { it * it * (it * 0.6f + 0.4f) }
+
+            // Maximum expansion radius: PERCIKAN LEBAR!
+            // Spans 35% to 54% of min screen dimension * particleSize (e.g. 380px to 620px radius on 1080p!)
+            val maxSpreadRadius = minDim * (0.35f + h1 * 0.19f) * config.particleSize.coerceIn(0.6f, 2.5f)
+
+            // Natural gravity drop: progressive quadratic curve (t^2)
+            val gravityFall = (burstP * burstP) * (minDim * 0.28f) * (0.85f + h3 * 0.30f)
+            val prevGravityFall = (prevBurstP * prevBurstP) * (minDim * 0.28f) * (0.85f + h3 * 0.30f)
+
+            // Fade out factor towards the end of lifespan
+            val fadeFactor = (1f - smoothstep(0.70f, 1.0f, burstP))
+            val globalAlpha = (fadeFactor * 255).toInt().coerceIn(0, 255)
+            if (globalAlpha <= 5) continue
+
+            // Render all sparks in this shell
+            for (k in 0 until sparksPerShell) {
+                val sparkSeed = shellSeed xor (k * 2246822519L)
+                val sh0 = ((sparkSeed ushr 16 and 0xFFFF) % 10000) / 10000f
+                val sh1 = ((sparkSeed ushr 8 and 0xFFFF) % 10000) / 10000f
+                val sh2 = ((sparkSeed ushr 4 and 0xFFFF) % 10000) / 10000f
+
+                // Spherical angle distribution with slight natural angular jitter
+                val baseAngle = (k.toFloat() / sparksPerShell) * 2f * 3.14159265f
+                val angle = baseAngle + (sh0 - 0.5f) * 0.25f
+
+                // Multi-tier velocity distribution:
+                // 70% outer chrysanthemum stars (full speed)
+                // 20% inner core pistil stars (55% speed with contrasting color)
+                // 10% trailing willow dust (40% speed, heavy gravity)
+                val isPistilCore = (k % 5 == 0)
+                val isWillowTrail = (k % 7 == 0)
+                val velMult = when {
+                    isPistilCore -> 0.45f + sh1 * 0.22f
+                    isWillowTrail -> 0.30f + sh1 * 0.25f
+                    else -> 0.82f + sh1 * 0.30f
+                }
+
+                // 3D perspective distortion (slight vertical foreshortening creates volumetric 3D spherical look)
+                val curDist = maxSpreadRadius * velMult * expansion
+                val prevDist = maxSpreadRadius * velMult * prevExpansion
+
+                val curX = burstCenterX + cos(angle) * curDist + (sh2 - 0.5f) * 16f * burstP
+                val curY = burstCenterY + sin(angle) * (curDist * 0.86f) + gravityFall * (if (isWillowTrail) 1.35f else 1.0f)
+
+                val prevX = burstCenterX + cos(angle) * prevDist
+                val prevY = burstCenterY + sin(angle) * (prevDist * 0.86f) + prevGravityFall * (if (isWillowTrail) 1.35f else 1.0f)
+
+                // Pyrotechnic color selection
+                val sparkColor = when {
+                    isPistilCore -> Color.parseColor("#FDE047") // Gold center pistil
+                    isWillowTrail -> Color.parseColor("#F59E0B") // Amber willow trail
+                    else -> activePalette[(k % (activePalette.size - 1)) + 1]
+                }
+
+                // High-temperature sparkling flicker (incandescent twinkling scintillation)
+                val flicker = (cos(timeMs * 0.045f * config.particleTwinkleRate + k * 13.7f) * 0.25f + 0.75f).coerceIn(0.1f, 1f)
+                val curSparkAlpha = (globalAlpha * flicker).toInt().coerceIn(0, 255)
+
+                if (curSparkAlpha <= 5) continue
+
+                // 1. Draw luminous velocity streak (motion trail!)
+                streakPaint.color = sparkColor
+                streakPaint.alpha = (curSparkAlpha * 0.85f).toInt()
+                val streakWidth = (3.2f * (1f - burstP * 0.65f) + 0.9f) * config.particleSize
+                streakPaint.strokeWidth = streakWidth
+                canvas.drawLine(prevX, prevY, curX, curY, streakPaint)
+
+                // 2. Draw incandescent burning star head (hot white-gold core + outer emission)
+                corePaint.color = Color.WHITE
+                corePaint.alpha = curSparkAlpha
+                val coreRadius = (2.2f * (1f - burstP * 0.5f) + 0.8f) * config.particleSize
+                canvas.drawCircle(curX, curY, coreRadius, corePaint)
+
+                // 3. Secondary Crackling Stars ("Dragon Eggs" / Popping time-rain at late phase)
+                if (burstP > 0.62f && (k % 3 == 0)) {
+                    val crackleTime = (timeMs * 0.07f + k * 23.3f)
+                    val cracklePulse = sin(crackleTime)
+                    if (cracklePulse > 0.45f) {
+                        // Sharp brilliant micro-flash
+                        val crackleAlpha = ((cracklePulse - 0.45f) / 0.55f * 255).toInt().coerceIn(0, 255)
+                        corePaint.color = Color.parseColor("#FEF08A")
+                        corePaint.alpha = crackleAlpha
+                        val crackleR = (3.5f + (cracklePulse - 0.45f) * 4f) * config.particleSize
+                        canvas.drawCircle(curX, curY, crackleR, corePaint)
+
+                        // 4-point micro glint
+                        if (config.isParticleStarGlintEnabled && cracklePulse > 0.8f) {
+                            drawStarGlint(canvas, curX, curY, 4.5f * config.particleSize, Color.WHITE, crackleAlpha, crackleTime * 20f)
+                        }
+                    }
+                }
+
+                // 4. Lingering golden micro-droplets shedding along willow trail
+                if (isWillowTrail && burstP in 0.35f..0.85f && k % 2 == 0) {
+                    val dropP = (sin(tSec * 15f + k.toFloat()) * 0.5f + 0.5f)
+                    val dropX = prevX * dropP + curX * (1f - dropP)
+                    val dropY = prevY * dropP + curY * (1f - dropP) + (dropP * 12f * config.particleSize)
+                    corePaint.color = Color.parseColor("#FDE047")
+                    corePaint.alpha = (curSparkAlpha * 0.65f).toInt()
+                    canvas.drawCircle(dropX, dropY, 1.2f * config.particleSize, corePaint)
+                }
             }
         }
     }

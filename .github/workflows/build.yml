@@ -47,32 +47,33 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.5.9
-          name: "MediaStudio Pro v1.5.9 - Efek Bendera Berkibar, Kibaran Kain Alami & Cloth Wave Simulation"
+          tag_name: v1.6.0
+          name: "MediaStudio Pro v1.6.0 - Kembang Api Spektakuler & Realistic Pyrotechnic Simulation"
           body: |
-            ## 🚩 MediaStudio Pro v1.5.9 — Efek Bendera Berkibar & Kibaran Kain Alami
+            ## 🎆 MediaStudio Pro v1.6.0 — Simulasi Kembang Api Alami & Spektakuler
 
-            Pembaruan **v1.5.9** menghadirkan simulasi kain dan bendera berkibar yang sangat realistis dengan teknologi mesh distortion Android native `Canvas.drawBitmapMesh()`.
+            Pembaruan **v1.6.0** menghadirkan perombakan total mesin partikel kembang api menjadi simulasi piroteknik realistis berskala besar:
 
             ---
 
-            ### 🚀 Fitur Baru & Peningkatan di v1.5.9:
+            ### 🚀 Fitur Baru & Peningkatan di v1.6.0:
 
-            1. 🚩 **Efek Bendera Berkibar & Kibaran Kain (Cloth Wave Simulation):**
-               - Simulasi fisika kain 28×28 mesh vertex menggunakan `Canvas.drawBitmapMesh()` — gambar/video bergerak seperti kain atau bendera yang tertiup angin secara realistis.
-               - **6 Arah Kibaran:** Kiri-ke-Kanan (bendera normal), Kanan-ke-Kiri, Atas-ke-Bawah, Bawah-ke-Atas, Diagonal, Gelombang Bebas.
-               - **6 Mode Jangkar / Tiang:** Tiang Kiri (Bendera), Tiang Kanan, Batang Atas (Spanduk Vertikal), Batang Bawah, Gelombang Bebas, Dua Tiang (Spanduk Jalan).
-               - **Kontrol Lengkap via Slider:** Kecepatan angin (0.2x–3.0x), Tinggi kibaran/amplitudo (5–80px), Kerapatan lipatan kain (0.4x–2.5x), Turbulensi/hembusan acak (0–80%).
-               - **Bayangan Lekukan 3D:** Efek pencahayaan per-vertex cosine-based untuk ilusi kedalaman lipatan kain nyata — bisa ON/OFF.
-               - **5 Preset Gaya Angin:** 🌬️ Semilir Angin (Breeze), 🚩 Bendera Normal, ⛈️ Badai Kencang (Storm), 🥻 Sutera Halus (Silk), 🏳️ Banner Vertikal.
-               - Juga tersedia untuk layer tumpukan video/foto (Overlay/PIP) — mesh 20×20.
+            1. 🎆 **Simulasi Piroteknik Kembang Api Alami (Bebas Efek Kartun):**
+               - **Jejak Ekor Cahaya Sejati (Luminous Motion Streaks / Comet Tails):** Menggantikan titik lingkaran kartun dengan garis berkilau dinamis mengikuti vektor kecepatan partikel dan waktu rana alami.
+               - **Inti Pijar Bersuhu Tinggi (Incandescent White-Hot Core):** Setiap butir kembang api memiliki inti putih menyala diiringi pendaran halasi warna kimia piroteknik (Strontium Red, Copper Cyan, Barium Green, Cesium Violet, Sodium Gold, Silver Titanium).
+               - **Fisika Balistik Aerodinamis:** Ledakan ekspansi cepat seketika yang kemudian melambat anggun akibat hambatan udara (drag resistance).
+               - **Lengkungan Gravitasi Weeping Willow / Kamuro:** Percikan api melengkung jatuh ke bawah secara alami menyerupai air terjun emas kembang api kelas dunia.
 
-            2. 🔍 **Quick Apply Diperbarui:**
-               - Ditambahkan "🚩 Bendera Berkibar & Kibaran Kain" di menu Quick Apply untuk akses satu-klik.
+            2. 🌌 **Percikan Ekstra Lebar (Screen-Filling Spread):**
+               - Radius ledakan ditingkatkan drastis mencapai 35% s/d 55% dari lebar/tinggi layar (diameter mencapai 800px – 1200px pada layar Full HD), memenuhi langit malam dengan megah.
 
-            3. ⚡ **Performa & Kompatibilitas:**
-               - Rendering bitmap mesh teroptimasi tanpa frame-drop.
-               - Dukungan ekspor 60 FPS ultra-smooth dari v1.5.8 tetap dipertahankan.
+            3. 💥 **Koreografi Multi-Shell & Bintang Crackles ("Dragon Eggs"):**
+               - Koreografi 3 hingga 8 selongsong roket kembang api simultan yang meluncur bergantian dari bawah dengan asap dorong pijar.
+               - Kilauan bintang pecah berkeretak (scintillating crackles / time-rain popping) pada fase akhir ledakan bunga api.
+               - Konstruksi selongsong multi-lapis: Peony luar berkecepatan tinggi dengan inti pistil emas kontras di tengah.
+
+            4. ⚡ **Performa & 60 FPS Export:**
+               - Rendering efisien tanpa beban garbage collection dengan objek canvas paint teroptimasi.
 
             ---
 

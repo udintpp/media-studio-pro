@@ -89,9 +89,9 @@ enum class AeEffectType(
     ),
     PARTICLE_FIREWORKS(
         id = "particle_fireworks",
-        displayName = "🎆 Kembang Api Tahun Baru (New Year Fireworks)",
+        displayName = "🎆 Kembang Api Spektakuler & Willow (Realistic Fireworks)",
         category = "Simulation",
-        description = "Simulasi ledakan kembang api spektakuler perayaan tahun baru dengan roket meluncur, ledakan mekar radial, dan percikan kilau."
+        description = "Simulasi kembang api alami: roket meluncur, ledakan mekar radial ekstra lebar, jejak ekor cahaya (light streaks), efek willow jatuh ke bawah, dan percikan crackles."
     ),
     PARTICLE_KETUPAT(
         id = "particle_ketupat",
