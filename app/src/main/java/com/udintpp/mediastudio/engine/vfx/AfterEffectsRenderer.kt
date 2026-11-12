@@ -109,8 +109,10 @@ object AfterEffectsRenderer {
         paint.alpha = (transform.opacity * 255).toInt().coerceIn(0, 255)
         paint.xfermode = PorterDuffXfermode(config.blendMode.porterDuffMode)
 
-        // 3. Render Base Video Frame, Turbulent Displace, or RGB Split Glitch
-        if (config.isRgbGlitchEnabled) {
+        // 3. Render Base Video Frame, Flag Wave, Turbulent Displace, or RGB Split Glitch
+        if (config.isFlagWaveEnabled) {
+            renderFlagClothWave(canvas, src, w, h, timeMs, config, paint)
+        } else if (config.isRgbGlitchEnabled) {
             renderRgbGlitch(canvas, src, timeMs, config.glitchIntensity, config.glitchScanlines, paint)
         } else if (config.isTurbulentDisplaceEnabled) {
             renderTurbulentDisplace(canvas, src, timeMs, config.turbulentAmount, config.turbulentSpeed, paint)
@@ -1956,7 +1958,9 @@ object AfterEffectsRenderer {
             xfermode = PorterDuffXfermode(overlay.blendMode.porterDuffMode)
         }
 
-        if (overlay.cornerRadius > 0f) {
+        if (overlay.isFlagWaveEnabled) {
+            renderMediaOverlayFlagWave(canvas, bmp, left, top, bmpW, bmpH, timeMs, overlay, overlayPaint)
+        } else if (overlay.cornerRadius > 0f) {
             val path = Path().apply {
                 addRoundRect(rect, overlay.cornerRadius, overlay.cornerRadius, Path.Direction.CW)
             }
@@ -2264,5 +2268,186 @@ object AfterEffectsRenderer {
             canvas.drawRect(0f, 0f, w.toFloat(), matteHeight, mattePaint)
             canvas.drawRect(0f, h - matteHeight, w.toFloat(), h.toFloat(), mattePaint)
         }
+    }
+
+    // --- 24. Flag & Cloth Fluttering Simulation (Kibaran Bendera Tertiup Angin) ---
+    private fun renderFlagClothWave(
+        canvas: Canvas,
+        src: Bitmap,
+        w: Int,
+        h: Int,
+        timeMs: Long,
+        config: AeConfig,
+        paint: Paint
+    ) {
+        if (w <= 0 || h <= 0) return
+        val meshW = 28
+        val meshH = 28
+        val totalVerts = (meshW + 1) * (meshH + 1)
+        val verts = FloatArray(totalVerts * 2)
+        val colors = if (config.flagWave3DShading) IntArray(totalVerts) else null
+
+        val tSec = (timeMs / 1000.0f) * config.flagWaveSpeed
+        val amp = config.flagWaveAmplitude
+        val freq = config.flagWaveWavelength * 2.0f * Math.PI.toFloat()
+        val turb = config.flagWaveTurbulence
+
+        var index = 0
+        for (row in 0..meshH) {
+            val v = row.toFloat() / meshH
+            val origY = v * h
+
+            for (col in 0..meshW) {
+                val u = col.toFloat() / meshW
+                val origX = u * w
+
+                // Anchor dampening factor (0 at pole/edge, 1 at free flapping edge)
+                val anchorFactor: Float = when (config.flagWaveAnchorMode) {
+                    "LEFT_POLE" -> Math.pow(u.toDouble(), 0.85).toFloat()
+                    "RIGHT_POLE" -> Math.pow((1f - u).toDouble(), 0.85).toFloat()
+                    "TOP_BAR" -> Math.pow(v.toDouble(), 0.85).toFloat()
+                    "BOTTOM_BAR" -> Math.pow((1f - v).toDouble(), 0.85).toFloat()
+                    "DUAL_POLE" -> (4f * u * (1f - u)).coerceIn(0f, 1f)
+                    "FREE_WAVE" -> 1.0f
+                    else -> Math.pow(u.toDouble(), 0.85).toFloat()
+                }
+
+                val (waveCoord, crossCoord) = when (config.flagWaveDirection) {
+                    "LEFT_TO_RIGHT" -> Pair(u, v)
+                    "RIGHT_TO_LEFT" -> Pair(1f - u, v)
+                    "TOP_TO_BOTTOM" -> Pair(v, u)
+                    "BOTTOM_TO_TOP" -> Pair(1f - v, u)
+                    "DIAGONAL" -> Pair(0.707f * (u + v), 0.707f * (u - v + 1f))
+                    "FREE_WAVE" -> Pair(u, v)
+                    else -> Pair(u, v)
+                }
+
+                // Wave phase equations (primary flutter + secondary harmonic ripple)
+                val phase1 = (waveCoord * freq) - (tSec * 4.2f)
+                val phase2 = (crossCoord * freq * 1.35f) - (tSec * 2.8f)
+
+                // Wind gust turbulence (soft natural surging)
+                val gust = 1.0f + turb * sin(tSec * 2.2f + waveCoord * 1.5f)
+
+                val sin1 = sin(phase1)
+                val cos1 = cos(phase1)
+                val sin2 = sin(phase2)
+
+                // Transverse wave displacement (ketinggian ombak kain)
+                val waveDisp = (sin1 + 0.28f * sin2) * amp * anchorFactor * gust
+
+                // 3D cloth perspective foreshortening (creasing/folding depth)
+                val foreshorten = -abs(sin1) * (amp * 0.28f) * anchorFactor
+
+                var dx = origX
+                var dy = origY
+
+                when (config.flagWaveDirection) {
+                    "LEFT_TO_RIGHT" -> {
+                        dy += waveDisp
+                        dx += foreshorten
+                    }
+                    "RIGHT_TO_LEFT" -> {
+                        dy += waveDisp
+                        dx -= foreshorten
+                    }
+                    "TOP_TO_BOTTOM" -> {
+                        dx += waveDisp
+                        dy += foreshorten
+                    }
+                    "BOTTOM_TO_TOP" -> {
+                        dx += waveDisp
+                        dy -= foreshorten
+                    }
+                    "DIAGONAL" -> {
+                        dx += 0.707f * (waveDisp + foreshorten)
+                        dy += 0.707f * (waveDisp - foreshorten)
+                    }
+                    else -> {
+                        dy += waveDisp
+                        dx += foreshorten
+                    }
+                }
+
+                verts[index * 2] = dx
+                verts[index * 2 + 1] = dy
+
+                if (colors != null) {
+                    val slope = cos1 * anchorFactor
+                    val shade = (1.0f + 0.28f * slope).coerceIn(0.65f, 1.18f)
+                    val r = (255 * shade).toInt().coerceIn(145, 255)
+                    val g = (255 * shade).toInt().coerceIn(145, 255)
+                    val b = (255 * shade).toInt().coerceIn(145, 255)
+                    colors[index] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+                }
+
+                index++
+            }
+        }
+
+        canvas.drawBitmapMesh(src, meshW, meshH, verts, 0, colors, 0, paint)
+    }
+
+    private fun renderMediaOverlayFlagWave(
+        canvas: Canvas,
+        src: Bitmap,
+        left: Float,
+        top: Float,
+        w: Float,
+        h: Float,
+        timeMs: Long,
+        overlay: AeMediaOverlay,
+        paint: Paint
+    ) {
+        if (w <= 0f || h <= 0f) return
+        val meshW = 20
+        val meshH = 20
+        val totalVerts = (meshW + 1) * (meshH + 1)
+        val verts = FloatArray(totalVerts * 2)
+        val colors = IntArray(totalVerts)
+
+        val tSec = (timeMs / 1000.0f) * overlay.flagWaveSpeed
+        val amp = overlay.flagWaveAmplitude
+        val freq = 2.0f * Math.PI.toFloat()
+
+        var index = 0
+        for (row in 0..meshH) {
+            val v = row.toFloat() / meshH
+            val origY = top + v * h
+
+            for (col in 0..meshW) {
+                val u = col.toFloat() / meshW
+                val origX = left + u * w
+
+                val anchorFactor: Float = when (overlay.flagWaveAnchorMode) {
+                    "LEFT_POLE" -> Math.pow(u.toDouble(), 0.85).toFloat()
+                    "RIGHT_POLE" -> Math.pow((1f - u).toDouble(), 0.85).toFloat()
+                    "FREE_WAVE" -> 1.0f
+                    else -> Math.pow(u.toDouble(), 0.85).toFloat()
+                }
+
+                val waveCoord = if (overlay.flagWaveDirection == "RIGHT_TO_LEFT") 1f - u else u
+                val phase1 = (waveCoord * freq) - (tSec * 4.2f)
+                val sin1 = sin(phase1)
+                val cos1 = cos(phase1)
+
+                val waveDisp = sin1 * amp * anchorFactor
+                val foreshorten = -abs(sin1) * (amp * 0.25f) * anchorFactor
+
+                verts[index * 2] = origX + foreshorten
+                verts[index * 2 + 1] = origY + waveDisp
+
+                val slope = cos1 * anchorFactor
+                val shade = (1.0f + 0.25f * slope).coerceIn(0.68f, 1.15f)
+                val r = (255 * shade).toInt().coerceIn(155, 255)
+                val g = (255 * shade).toInt().coerceIn(155, 255)
+                val b = (255 * shade).toInt().coerceIn(155, 255)
+                colors[index] = (0xFF shl 24) or (r shl 16) or (g shl 8) or b
+
+                index++
+            }
+        }
+
+        canvas.drawBitmapMesh(src, meshW, meshH, verts, 0, colors, 0, paint)
     }
 }

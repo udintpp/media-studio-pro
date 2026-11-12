@@ -47,10 +47,32 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.5.8
-          name: "MediaStudio Pro v1.5.8 - 60 FPS Ultra-Smooth Export, Mastering Sinematik & Tekstur Alami 35mm"
+          tag_name: v1.5.9
+          name: "MediaStudio Pro v1.5.9 - Efek Bendera Berkibar, Kibaran Kain Alami & Cloth Wave Simulation"
           body: |
-            ## 🎬 MediaStudio Pro v1.5.8 - Ultra-Smooth 60 FPS Export & Cinematic Mastering
+            ## 🚩 MediaStudio Pro v1.5.9 - Efek Bendera Berkibar & Kibaran Kain Alami
+
+Pembaruan **v1.5.9** menghadirkan simulasi kain dan bendera berkibar yang sangat realistis dengan teknologi mesh distortion Android native:
+
+---
+
+### 🚀 Fitur Baru & Peningkatan di v1.5.9:
+
+1. 🚩 **Efek Bendera Berkibar & Kibaran Kain (Cloth Wave Simulation):**
+   - Menggunakan `Canvas.drawBitmapMesh()` dengan mesh 28×28 vertex untuk mendistorsi gambar/video menjadi seperti kain yang tertiup angin secara realistis.
+   - **6 Arah Kibaran:** Kiri-ke-Kanan, Kanan-ke-Kiri, Atas-ke-Bawah, Bawah-ke-Atas, Diagonal, Gelombang Bebas.
+   - **6 Mode Jangkar / Tiang:** Tiang Kiri (Bendera), Tiang Kanan, Batang Atas (Spanduk), Batang Bawah, Gelombang Bebas, Dua Tiang.
+   - **Kontrol Lengkap:** Kecepatan angin (0.2x–3.0x), Tinggi kibaran/amplitudo (5–80px), Kerapatan lipatan kain, Turbulensi/hembusan acak (0–80%).
+   - **Bayangan Lekukan 3D:** Efek pencahayaan per-vertex cosine-based untuk ilusi kedalaman lipatan kain nyata.
+   - **5 Preset Gaya Angin:** 🌬️ Semilir Angin, 🚩 Bendera Normal, ⛈️ Badai Kencang, 🥻 Sutera Halus, 🏳️ Banner Vertikal.
+   - Juga tersedia untuk layer tumpukan video/foto (Overlay/PIP).
+
+2. 🔍 **Quick Apply Diperbarui:**
+   - Ditambahkan entri "🚩 Bendera Berkibar & Kibaran Kain" di menu Quick Apply untuk akses cepat.
+
+---
+
+> Build otomatis oleh GitHub Actions. Unduh `app-debug.apk` di bagian Assets.
 
             Pembaruan **v1.5.8** menghadirkan peningkatan performa ekspor video dan efek finishing sinematik alami tingkat tinggi:
 

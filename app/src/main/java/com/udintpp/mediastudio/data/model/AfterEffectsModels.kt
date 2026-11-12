@@ -319,6 +319,12 @@ data class AeMediaOverlay(
     var cornerRadius: Float = 16f,
     var borderWidth: Float = 0f,
     var borderColor: Int = Color.WHITE,
+    // Flag & Cloth Fluttering Simulation (Kibaran Bendera Tertiup Angin)
+    var isFlagWaveEnabled: Boolean = false,
+    var flagWaveDirection: String = "LEFT_TO_RIGHT",
+    var flagWaveSpeed: Float = 1.0f,
+    var flagWaveAmplitude: Float = 20f,
+    var flagWaveAnchorMode: String = "LEFT_POLE",
     // Transient properties for frame caching
     @Transient var cachedBitmap: android.graphics.Bitmap? = null,
     @Transient var videoDurationMs: Long = 0L,
@@ -419,6 +425,17 @@ data class AeConfig(
     var cinematicVignetteAmount: Float = 0.40f,
 
     var isCinematicLetterboxEnabled: Boolean = false,   // 2.39:1 Cinemascope cinema bars
+
+    // --- Flag & Cloth Fluttering Simulation (Kibaran Bendera Tertiup Angin) ---
+    var isFlagWaveEnabled: Boolean = false,
+    var flagWaveDirection: String = "LEFT_TO_RIGHT", // "LEFT_TO_RIGHT", "RIGHT_TO_LEFT", "TOP_TO_BOTTOM", "BOTTOM_TO_TOP", "DIAGONAL", "FREE_WAVE"
+    var flagWaveSpeed: Float = 1.0f,               // 0.2f - 3.0f (Kecepatan kibaran angin)
+    var flagWaveAmplitude: Float = 28f,            // 5f - 80f (Tinggi ombak / kedalaman kibaran)
+    var flagWaveWavelength: Float = 1.0f,          // 0.5f - 2.5f (Kerapatan lipatan kain)
+    var flagWaveAnchorMode: String = "LEFT_POLE",  // "LEFT_POLE", "RIGHT_POLE", "TOP_BAR", "BOTTOM_BAR", "FREE_WAVE", "DUAL_POLE"
+    var flagWave3DShading: Boolean = true,         // Pencahayaan lekukan kain 3D
+    var flagWaveTurbulence: Float = 0.35f,         // Hembusan angin acak bergelombang (turbulensi alami)
+    var flagWavePreset: String = "NORMAL",         // "BREEZE", "NORMAL", "STORM", "SILK", "BANNER"
 
     var exportFramerate: Int = 60, // 60 FPS (Ultra Smooth) atau 30 FPS
 

@@ -106,7 +106,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     private var activeDragTarget = DragTarget.MOTION_TEXT
 
     private enum class ActiveVfxSlider {
-        GLOW, GLITCH, WIGGLE, LENS_FLARE, GRAIN, LIGHT_RAYS, TURBULENT, ZOOM_BLUR, SABER, ROT_X, ROT_Y, UNMULT, CONTOUR, CURL_NOISE, DOF, OVERLAY_SCALE, OVERLAY_OPACITY, NONE
+        GLOW, GLITCH, WIGGLE, LENS_FLARE, GRAIN, LIGHT_RAYS, TURBULENT, ZOOM_BLUR, SABER, ROT_X, ROT_Y, UNMULT, CONTOUR, CURL_NOISE, DOF, OVERLAY_SCALE, OVERLAY_OPACITY, FLAG_AMPLITUDE, FLAG_SPEED, FLAG_WAVELENGTH, FLAG_TURBULENCE, NONE
     }
     private var activeSlider = ActiveVfxSlider.GLOW
 
@@ -581,6 +581,10 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             showCinematicMasteringDialog()
         }
 
+        binding.btnVfxFlagWave.setOnClickListener {
+            showFlagWaveDialog()
+        }
+
         binding.btnVfxFilmGrain.setOnClickListener {
             aeConfig.isFilmGrainEnabled = !aeConfig.isFilmGrainEnabled
             activeSlider = ActiveVfxSlider.GRAIN
@@ -694,6 +698,22 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             binding.tvVfxToolValue.text = "${value.toInt()}%"
                         }
                     }
+                    ActiveVfxSlider.FLAG_AMPLITUDE -> {
+                        aeConfig.flagWaveAmplitude = (value / 100f) * 75f + 5f
+                        binding.tvVfxToolValue.text = "${aeConfig.flagWaveAmplitude.toInt()}px"
+                    }
+                    ActiveVfxSlider.FLAG_SPEED -> {
+                        aeConfig.flagWaveSpeed = (value / 50f).coerceIn(0.2f, 3.0f)
+                        binding.tvVfxToolValue.text = String.format(Locale.US, "%.1fx", aeConfig.flagWaveSpeed)
+                    }
+                    ActiveVfxSlider.FLAG_WAVELENGTH -> {
+                        aeConfig.flagWaveWavelength = (value / 50f).coerceIn(0.4f, 2.5f)
+                        binding.tvVfxToolValue.text = String.format(Locale.US, "%.1fx", aeConfig.flagWaveWavelength)
+                    }
+                    ActiveVfxSlider.FLAG_TURBULENCE -> {
+                        aeConfig.flagWaveTurbulence = (value / 100f).coerceIn(0.0f, 0.8f)
+                        binding.tvVfxToolValue.text = "${value.toInt()}%"
+                    }
                     ActiveVfxSlider.NONE -> {}
                 }
                 updatePreview()
@@ -738,7 +758,8 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             aeConfig.isCinematicProMistEnabled,
             aeConfig.isCinematicFilmTextureEnabled,
             aeConfig.isCinematicVignetteEnabled,
-            aeConfig.isCinematicLetterboxEnabled
+            aeConfig.isCinematicLetterboxEnabled,
+            aeConfig.isFlagWaveEnabled
         ).count { it }
         binding.tvActiveVfxBadge.text = "⚡ AE Engine: $activeCount Efek Aktif"
         binding.btnVfxOverlay.text = if (aeConfig.mediaOverlays.isNotEmpty()) "🖼️ Tumpuk (${aeConfig.mediaOverlays.size})" else "🖼️ Tumpuk Video/Foto"
@@ -746,6 +767,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         binding.btnVfxMotionText.text = if (activeText != null) "🔤 Teks: ${activeText.style}" else "🔤 Teks & Gerak"
         binding.btnVfxTextStyle.text = if (activeText != null && activeText.frameStyle != "NONE") "✨ Frame: ${activeText.frameStyle}" else "✨ Gaya, 3D/2D & Frame"
         binding.btnVfxCinematic.text = if (aeConfig.isCinematicProMistEnabled || aeConfig.isCinematicFilmTextureEnabled || aeConfig.isCinematicVignetteEnabled || aeConfig.isCinematicLetterboxEnabled) "🎬 Sinematik: ON" else "🎬 Sinematik & Tekstur"
+        binding.btnVfxFlagWave.text = if (aeConfig.isFlagWaveEnabled) "🚩 Bendera: ON" else "🚩 Bendera Berkibar"
     }
 
     private fun updateKeyframeCount() {
@@ -1441,7 +1463,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     11 -> showTextStarGlintColorDialog(target)
                     12 -> showTextFontSizeDialog(target)
                     13 -> showTextPositionsDialog(target)
-                    14 -> showTextPresetTemplatesDialog()
+                    15 -> showTextPresetTemplatesDialog()
                 }
             }
             .setNegativeButton("Tutup", null)
@@ -2685,6 +2707,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             aeConfig.isCinematicFilmTextureEnabled ||
                             aeConfig.isCinematicVignetteEnabled ||
                             aeConfig.isCinematicLetterboxEnabled ||
+                            aeConfig.isFlagWaveEnabled ||
                             aeConfig.exportFramerate >= 60
 
                     if (!isVideo || hasActiveVfx) {
@@ -2865,6 +2888,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             "🎛️ Parameter Partikel (Warna, Arah Acak & Turbulensi)",
             "🎞️ Film Grain 35mm Real Stock",
             "🎬 Mastering Sinematik & Tekstur Alami (Pro-Mist, 35mm Grain, 60fps)",
+            "🚩 Bendera Berkibar & Kibaran Kain (Cloth Wave Simulation)",
             "🔤 Motion Text & Teks Berjalan",
             "📋 Template Teks Siap Pakai (News Ticker, Credits, 3D, Frames)",
             "✨ Gaya Huruf 3D/2D, Kilauan & Frame Teks",
@@ -2898,20 +2922,21 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     10 -> showParticleSettingsDialog()
                     11 -> binding.btnVfxFilmGrain.performClick()
                     12 -> showCinematicMasteringDialog()
-                    13 -> showMotionTextDialog()
-                    14 -> showTextPresetTemplatesDialog()
-                    15 -> showTextStyleDialog()
-                    16 -> showStickerDialog()
-                    17 -> binding.btnVfxOverlay.performClick()
-                    18 -> binding.btnVfxAudioSpectrum.performClick()
-                    19 -> showBlendModeDialog()
-                    20 -> showUnmultDialog()
-                    21 -> showContourDialog()
-                    22 -> showCurlNoiseDialog()
-                    23 -> showDepthOfFieldDialog()
-                    24 -> showGuidesDialog()
-                    25 -> takeSnapshot()
-                    26 -> showCompSettingsDialog()
+                    13 -> showFlagWaveDialog()
+                    14 -> showMotionTextDialog()
+                    15 -> showTextPresetTemplatesDialog()
+                    16 -> showTextStyleDialog()
+                    17 -> showStickerDialog()
+                    18 -> binding.btnVfxOverlay.performClick()
+                    19 -> binding.btnVfxAudioSpectrum.performClick()
+                    20 -> showBlendModeDialog()
+                    21 -> showUnmultDialog()
+                    22 -> showContourDialog()
+                    23 -> showCurlNoiseDialog()
+                    24 -> showDepthOfFieldDialog()
+                    25 -> showGuidesDialog()
+                    26 -> takeSnapshot()
+                    27 -> showCompSettingsDialog()
                 }
             }
             .setNegativeButton("Tutup", null)
@@ -3252,6 +3277,201 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                         Toast.makeText(this, "Efek sinematik dimatikan", Toast.LENGTH_SHORT).show()
                     }
                 }
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showFlagWaveDialog() {
+        val options = arrayOf(
+            if (aeConfig.isFlagWaveEnabled) "🚩 Efek Bendera Berkibar: [AKTIF ✓]" else "🚩 Efek Bendera Berkibar: [MATI]",
+            "━━━ 🧭 ARAH HEMBUSAN ANGIN ━━━",
+            when (aeConfig.flagWaveDirection) {
+                "LEFT_TO_RIGHT" -> "→ Kiri ke Kanan (Angin dari Kiri) [✓]"
+                "RIGHT_TO_LEFT" -> "← Kanan ke Kiri (Angin dari Kanan) [✓]"
+                "TOP_TO_BOTTOM" -> "↓ Atas ke Bawah (Angin dari Atas) [✓]"
+                "BOTTOM_TO_TOP" -> "↑ Bawah ke Atas (Angin dari Bawah) [✓]"
+                "DIAGONAL" -> "↗ Diagonal (Angin Miring) [✓]"
+                "FREE_WAVE" -> "🌊 Ombak Bebas (Semua Arah) [✓]"
+                else -> "→ Kiri ke Kanan (Angin dari Kiri) [✓]"
+            },
+            "━━━ 🏛️ TIANG JANGKAR ━━━",
+            when (aeConfig.flagWaveAnchorMode) {
+                "LEFT_POLE" -> "🏛️ Tiang Kiri (Bendera / Spanduk) [✓]"
+                "RIGHT_POLE" -> "🏛️ Tiang Kanan [✓]"
+                "TOP_BAR" -> "🏛️ Palang Atas (Tirai Jatuh) [✓]"
+                "BOTTOM_BAR" -> "🏛️ Palang Bawah (Tirai Naik) [✓]"
+                "DUAL_POLE" -> "🏛️ Dua Tiang (Spanduk Terentang) [✓]"
+                "FREE_WAVE" -> "🌊 Tanpa Jangkar (Ombak Bebas) [✓]"
+                else -> "🏛️ Tiang Kiri (Bendera / Spanduk) [✓]"
+            },
+            "━━━ ⚙️ PARAMETER GERAKAN ━━━",
+            "🌬️ Kecepatan Angin (${String.format("%.1f", aeConfig.flagWaveSpeed)}x) — Atur via Slider",
+            "〰️ Tinggi Kibaran / Amplitudo (${aeConfig.flagWaveAmplitude.toInt()}px) — Atur via Slider",
+            "〰️ Kerapatan Lipatan Kain (${String.format("%.1f", aeConfig.flagWaveWavelength)}x) — Atur via Slider",
+            "🌪️ Turbulensi Angin / Hembusan Acak (${(aeConfig.flagWaveTurbulence * 100).toInt()}%) — Atur via Slider",
+            if (aeConfig.flagWave3DShading) "💡 Bayangan Lekukan 3D: [ON ✓]" else "💡 Bayangan Lekukan 3D: [OFF]",
+            "━━━ 🎬 PRESET CEPAT ANGIN ━━━",
+            "🌿 Preset: Angin Sepoi (Breeze) — Santai & Lembut",
+            "🌬️ Preset: Angin Normal (Flag) — Kibaran Bendera Khas",
+            "🌪️ Preset: Angin Kencang (Storm) — Dramatis & Bertenaga",
+            "🪡 Preset: Sutra Melayang (Silk) — Sangat Lembut & Mengalir",
+            "📢 Preset: Spanduk Terentang (Banner) — Dua Tiang Datar",
+            "❌ Matikan Efek Kibaran"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("🚩 Efek Bendera / Kain Berkibar — Cloth Wave Simulation")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        aeConfig.isFlagWaveEnabled = !aeConfig.isFlagWaveEnabled
+                        Toast.makeText(this, "Efek Kibaran: ${if (aeConfig.isFlagWaveEnabled) "Aktif" else "Mati"}", Toast.LENGTH_SHORT).show()
+                    }
+                    1 -> return@setItems // header
+                    2 -> { // sub-menu arah
+                        showFlagWaveDirectionDialog()
+                        return@setItems
+                    }
+                    3 -> return@setItems // header
+                    4 -> { // sub-menu jangkar
+                        showFlagWaveAnchorDialog()
+                        return@setItems
+                    }
+                    5 -> return@setItems // header parameter
+                    6 -> {
+                        aeConfig.isFlagWaveEnabled = true
+                        activeSlider = ActiveVfxSlider.FLAG_SPEED
+                        updateSliderUI("Kecepatan Angin (Kibaran)", (aeConfig.flagWaveSpeed * 50f).toInt().coerceIn(0, 100))
+                    }
+                    7 -> {
+                        aeConfig.isFlagWaveEnabled = true
+                        activeSlider = ActiveVfxSlider.FLAG_AMPLITUDE
+                        updateSliderUI("Tinggi Kibaran / Amplitudo", ((aeConfig.flagWaveAmplitude - 5f) / 75f * 100f).toInt().coerceIn(0, 100))
+                    }
+                    8 -> {
+                        aeConfig.isFlagWaveEnabled = true
+                        activeSlider = ActiveVfxSlider.FLAG_WAVELENGTH
+                        updateSliderUI("Kerapatan Lipatan Kain", (aeConfig.flagWaveWavelength * 50f).toInt().coerceIn(0, 100))
+                    }
+                    9 -> {
+                        aeConfig.isFlagWaveEnabled = true
+                        activeSlider = ActiveVfxSlider.FLAG_TURBULENCE
+                        updateSliderUI("Turbulensi Angin (Hembusan Acak)", (aeConfig.flagWaveTurbulence / 0.8f * 100f).toInt().coerceIn(0, 100))
+                    }
+                    10 -> {
+                        aeConfig.flagWave3DShading = !aeConfig.flagWave3DShading
+                        Toast.makeText(this, "Bayangan 3D: ${if (aeConfig.flagWave3DShading) "Aktif" else "Mati"}", Toast.LENGTH_SHORT).show()
+                    }
+                    11 -> return@setItems // header preset
+                    12 -> { // Breeze
+                        aeConfig.isFlagWaveEnabled = true
+                        aeConfig.flagWaveDirection = "LEFT_TO_RIGHT"
+                        aeConfig.flagWaveAnchorMode = "LEFT_POLE"
+                        aeConfig.flagWaveSpeed = 0.5f
+                        aeConfig.flagWaveAmplitude = 14f
+                        aeConfig.flagWaveWavelength = 1.2f
+                        aeConfig.flagWaveTurbulence = 0.2f
+                        aeConfig.flagWave3DShading = true
+                        Toast.makeText(this, "Preset Angin Sepoi diaktifkan", Toast.LENGTH_SHORT).show()
+                    }
+                    13 -> { // Normal Flag
+                        aeConfig.isFlagWaveEnabled = true
+                        aeConfig.flagWaveDirection = "LEFT_TO_RIGHT"
+                        aeConfig.flagWaveAnchorMode = "LEFT_POLE"
+                        aeConfig.flagWaveSpeed = 1.0f
+                        aeConfig.flagWaveAmplitude = 28f
+                        aeConfig.flagWaveWavelength = 1.0f
+                        aeConfig.flagWaveTurbulence = 0.35f
+                        aeConfig.flagWave3DShading = true
+                        Toast.makeText(this, "Preset Bendera Normal diaktifkan", Toast.LENGTH_SHORT).show()
+                    }
+                    14 -> { // Storm
+                        aeConfig.isFlagWaveEnabled = true
+                        aeConfig.flagWaveDirection = "LEFT_TO_RIGHT"
+                        aeConfig.flagWaveAnchorMode = "LEFT_POLE"
+                        aeConfig.flagWaveSpeed = 2.5f
+                        aeConfig.flagWaveAmplitude = 55f
+                        aeConfig.flagWaveWavelength = 0.7f
+                        aeConfig.flagWaveTurbulence = 0.70f
+                        aeConfig.flagWave3DShading = true
+                        Toast.makeText(this, "Preset Angin Kencang diaktifkan", Toast.LENGTH_SHORT).show()
+                    }
+                    15 -> { // Silk
+                        aeConfig.isFlagWaveEnabled = true
+                        aeConfig.flagWaveDirection = "LEFT_TO_RIGHT"
+                        aeConfig.flagWaveAnchorMode = "LEFT_POLE"
+                        aeConfig.flagWaveSpeed = 0.6f
+                        aeConfig.flagWaveAmplitude = 20f
+                        aeConfig.flagWaveWavelength = 1.6f
+                        aeConfig.flagWaveTurbulence = 0.08f
+                        aeConfig.flagWave3DShading = true
+                        Toast.makeText(this, "Preset Sutra Melayang diaktifkan", Toast.LENGTH_SHORT).show()
+                    }
+                    16 -> { // Banner
+                        aeConfig.isFlagWaveEnabled = true
+                        aeConfig.flagWaveDirection = "TOP_TO_BOTTOM"
+                        aeConfig.flagWaveAnchorMode = "DUAL_POLE"
+                        aeConfig.flagWaveSpeed = 0.9f
+                        aeConfig.flagWaveAmplitude = 18f
+                        aeConfig.flagWaveWavelength = 1.1f
+                        aeConfig.flagWaveTurbulence = 0.15f
+                        aeConfig.flagWave3DShading = true
+                        Toast.makeText(this, "Preset Spanduk Banner diaktifkan", Toast.LENGTH_SHORT).show()
+                    }
+                    17 -> {
+                        aeConfig.isFlagWaveEnabled = false
+                        Toast.makeText(this, "Efek kibaran dimatikan", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showFlagWaveDirectionDialog() {
+        val dirs = arrayOf(
+            "→ Kiri ke Kanan (Angin dari Kiri)",
+            "← Kanan ke Kiri (Angin dari Kanan)",
+            "↓ Atas ke Bawah (Angin dari Atas)",
+            "↑ Bawah ke Atas (Angin dari Bawah)",
+            "↗ Diagonal Miring",
+            "🌊 Ombak Bebas Semua Arah"
+        )
+        val codes = arrayOf("LEFT_TO_RIGHT", "RIGHT_TO_LEFT", "TOP_TO_BOTTOM", "BOTTOM_TO_TOP", "DIAGONAL", "FREE_WAVE")
+        AlertDialog.Builder(this)
+            .setTitle("🧭 Pilih Arah Hembusan Angin")
+            .setItems(dirs) { _, which ->
+                aeConfig.flagWaveDirection = codes[which]
+                aeConfig.isFlagWaveEnabled = true
+                Toast.makeText(this, "Arah angin: ${dirs[which]}", Toast.LENGTH_SHORT).show()
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showFlagWaveAnchorDialog() {
+        val anchors = arrayOf(
+            "🏛️ Tiang Kiri (Bendera Nasional / Spanduk)",
+            "🏛️ Tiang Kanan (Kibaran ke Kiri)",
+            "🏛️ Palang Atas (Tirai / Gorden Jatuh)",
+            "🏛️ Palang Bawah (Tirai Naik dari Bawah)",
+            "🏛️ Dua Tiang (Spanduk Terentang Horizontal)",
+            "🌊 Tanpa Jangkar (Ombak Bebas Melayang)"
+        )
+        val codes = arrayOf("LEFT_POLE", "RIGHT_POLE", "TOP_BAR", "BOTTOM_BAR", "DUAL_POLE", "FREE_WAVE")
+        AlertDialog.Builder(this)
+            .setTitle("🏛️ Pilih Titik Jangkar / Pegangan Kain")
+            .setItems(anchors) { _, which ->
+                aeConfig.flagWaveAnchorMode = codes[which]
+                aeConfig.isFlagWaveEnabled = true
+                Toast.makeText(this, "Mode jangkar: ${anchors[which]}", Toast.LENGTH_SHORT).show()
                 updateBadge()
                 updatePreview()
             }
