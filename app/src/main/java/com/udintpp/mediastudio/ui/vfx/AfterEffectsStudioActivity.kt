@@ -106,9 +106,10 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
     private var activeDragTarget = DragTarget.MOTION_TEXT
 
     private enum class ActiveVfxSlider {
-        GLOW, GLITCH, WIGGLE, LENS_FLARE, GRAIN, LIGHT_RAYS, TURBULENT, ZOOM_BLUR, SABER, ROT_X, ROT_Y, UNMULT, CONTOUR, CURL_NOISE, DOF, OVERLAY_SCALE, OVERLAY_OPACITY, FLAG_AMPLITUDE, FLAG_SPEED, FLAG_WAVELENGTH, FLAG_TURBULENCE, NONE
+        GLOW, GLITCH, WIGGLE, LENS_FLARE, GRAIN, LIGHT_RAYS, TURBULENT, ZOOM_BLUR, SABER, ROT_X, ROT_Y, UNMULT, CONTOUR, CURL_NOISE, DOF, OVERLAY_SCALE, OVERLAY_OPACITY, FLAG_AMPLITUDE, FLAG_SPEED, FLAG_WAVELENGTH, FLAG_TURBULENCE, RESIZE_SCALE, NONE
     }
     private var activeSlider = ActiveVfxSlider.GLOW
+    private var previewZoomFactor = 1.0f
 
     private val overlayRetrievers = mutableMapOf<String, MediaMetadataRetriever>()
 
@@ -118,6 +119,22 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
 
     private val pickOverlayVideoLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
         uri?.let { addVideoOverlay(it) }
+    }
+
+    private val pickBgImageLauncher = registerForActivityResult(ActivityResultContracts.GetContent()) { uri ->
+        uri ?: return@registerForActivityResult
+        lifecycleScope.launch(Dispatchers.IO) {
+            val stream = contentResolver.openInputStream(uri)
+            val bmp = BitmapFactory.decodeStream(stream)
+            stream?.close()
+            withContext(Dispatchers.Main) {
+                aeConfig.bgCustomBitmap = bmp
+                aeConfig.bgCustomImageUri = uri.toString()
+                aeConfig.bgMode = "CUSTOM_IMAGE"
+                Toast.makeText(this@AfterEffectsStudioActivity, "BG Kustom dimuat", Toast.LENGTH_SHORT).show()
+                updatePreview()
+            }
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -317,9 +334,12 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
 
                     withContext(Dispatchers.Main) {
                         baseBitmap = frame ?: createFallbackBitmap()
+                        aeConfig.compWidth = rawVideoWidth
+                        aeConfig.compHeight = rawVideoHeight
                         initTimeline()
                         adjustContainerAspect(rawVideoWidth, rawVideoHeight)
                         initMediaPlayer(uri)
+                        updateBadge()
                         updatePreview()
                     }
                 } else {
@@ -330,8 +350,13 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
 
                     withContext(Dispatchers.Main) {
                         baseBitmap = bmp ?: createFallbackBitmap()
+                        baseBitmap?.let {
+                            aeConfig.compWidth = it.width
+                            aeConfig.compHeight = it.height
+                            adjustContainerAspect(it.width, it.height)
+                        }
                         initTimeline()
-                        baseBitmap?.let { adjustContainerAspect(it.width, it.height) }
+                        updateBadge()
                         updatePreview()
                     }
                 }
@@ -662,6 +687,24 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             showDepthOfFieldDialog()
         }
 
+
+        // --- New feature buttons ---
+        binding.btnVfxBgCustom.setOnClickListener { showBgCustomDialog() }
+        binding.btnVfxResize.setOnClickListener { showResizeDialog() }
+        binding.btnVfxCrop.setOnClickListener { showCropDialog() }
+        binding.btnVfxZoom.setOnClickListener { showZoomDialog() }
+        binding.btnVfxFlip.setOnClickListener { showFlipDialog() }
+        binding.btnVfxManualSize.setOnClickListener { showManualSizeDialog() }
+        binding.btnPreviewZoomIn.setOnClickListener { adjustPreviewZoom(+0.25f) }
+        binding.tvPreviewZoomLabel.setOnClickListener {
+            previewZoomFactor = 1.0f
+            binding.ivVfxPreview.scaleX = 1.0f
+            binding.ivVfxPreview.scaleY = 1.0f
+            binding.tvPreviewZoomLabel.text = "100%"
+            Toast.makeText(this, "Zoom reset ke 100%", Toast.LENGTH_SHORT).show()
+        }
+        binding.btnPreviewZoomOut.setOnClickListener { adjustPreviewZoom(-0.25f) }
+
         setupTouchRepos()
 
         // Active Slider listener
@@ -713,6 +756,10 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     ActiveVfxSlider.FLAG_TURBULENCE -> {
                         aeConfig.flagWaveTurbulence = (value / 100f).coerceIn(0.0f, 0.8f)
                         binding.tvVfxToolValue.text = "${value.toInt()}%"
+                    }
+                    ActiveVfxSlider.RESIZE_SCALE -> {
+                        aeConfig.baseMediaScale = (value / 50f).coerceIn(0.1f, 3.0f)
+                        binding.tvVfxToolValue.text = "${(aeConfig.baseMediaScale * 100).toInt()}%"
                     }
                     ActiveVfxSlider.NONE -> {}
                 }
@@ -768,6 +815,31 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         binding.btnVfxTextStyle.text = if (activeText != null && activeText.frameStyle != "NONE") "✨ Frame: ${activeText.frameStyle}" else "✨ Gaya, 3D/2D & Frame"
         binding.btnVfxCinematic.text = if (aeConfig.isCinematicProMistEnabled || aeConfig.isCinematicFilmTextureEnabled || aeConfig.isCinematicVignetteEnabled || aeConfig.isCinematicLetterboxEnabled) "🎬 Sinematik: ON" else "🎬 Sinematik & Tekstur"
         binding.btnVfxFlagWave.text = if (aeConfig.isFlagWaveEnabled) "🚩 Bendera: ON" else "🚩 Bendera Berkibar"
+        binding.btnVfxBgCustom.text = when (aeConfig.bgMode) {
+            "GRADIENT" -> "🎨 BG: ${aeConfig.bgGradientPreset}"
+            "BLUR_MEDIA" -> "🎨 BG: Blur Bokeh"
+            "CUSTOM_IMAGE" -> "🎨 BG: Galeri"
+            "TRANSPARENT" -> "🎨 BG: Transparan"
+            else -> if (aeConfig.bgColor != Color.BLACK) "🎨 BG: Kustom" else "🎨 Latar Belakang / BG"
+        }
+        binding.btnVfxResize.text = if (aeConfig.baseMediaFitMode != "FIT" || aeConfig.baseMediaScale != 1.0f) {
+            "📐 ${aeConfig.baseMediaFitMode} ${(aeConfig.baseMediaScale * 100).toInt()}%"
+        } else {
+            "📐 Resize & Skala"
+        }
+        binding.btnVfxCrop.text = if (aeConfig.isCropEnabled) {
+            "✂️ Crop: ${aeConfig.cropAspectRatioPreset}"
+        } else {
+            "✂️ Crop & Potong"
+        }
+        binding.btnVfxFlip.text = if (aeConfig.isFlipHorizontal || aeConfig.isFlipVertical) {
+            val h = if (aeConfig.isFlipHorizontal) "H" else ""
+            val v = if (aeConfig.isFlipVertical) "V" else ""
+            "🪞 Flip: $h$v"
+        } else {
+            "🪞 Flip Cermin"
+        }
+        binding.btnVfxManualSize.text = "📏 ${aeConfig.compWidth}×${aeConfig.compHeight} ${aeConfig.compUnit}"
     }
 
     private fun updateKeyframeCount() {
@@ -1113,7 +1185,8 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         val options = arrayOf(
             "⏱️ Durasi Komposisi (${formatTime(durationMs)})",
             "📐 Rasio Aspek Layar (${aeConfig.compAspectRatio})",
-            "📺 Resolusi Komposisi (${aeConfig.compWidth} x ${aeConfig.compHeight})"
+            "📺 Resolusi Komposisi (${aeConfig.compWidth} x ${aeConfig.compHeight})",
+            "📏 Dimensi Manual (px / cm / inch @ ${aeConfig.compDpi} DPI)"
         )
         AlertDialog.Builder(this)
             .setTitle("⚙️ Pengaturan Komposisi (Ctrl+K)")
@@ -1122,6 +1195,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     0 -> showDurationPickerDialog()
                     1 -> showAspectRatioPickerDialog()
                     2 -> showResolutionPickerDialog()
+                    3 -> showManualSizeDialog()
                 }
             }
             .show()
@@ -1189,6 +1263,8 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     "21:9" -> { aeConfig.compWidth = 2560; aeConfig.compHeight = 1080 }
                 }
                 Toast.makeText(this, "Rasio diubah: ${ratioCodes[which]} (${aeConfig.compWidth}x${aeConfig.compHeight})", Toast.LENGTH_SHORT).show()
+                adjustContainerAspect(aeConfig.compWidth, aeConfig.compHeight)
+                updateBadge()
                 updatePreview()
             }
             .show()
@@ -2636,7 +2712,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     val frameList = mutableListOf<Bitmap>()
                     val stepMs = durationMs / totalFrames
 
-                    val exportCfg = aeConfig.copy(isGuideGridEnabled = false)
+                    val exportCfg = aeConfig.copy(isGuideGridEnabled = false).apply { bgCustomBitmap = aeConfig.bgCustomBitmap }
                     var lastDecodedFrame: Bitmap = base
                     val videoRetriever = if (isVideo) {
                         MediaMetadataRetriever().apply { setDataSource(this@AfterEffectsStudioActivity, uri) }
@@ -2742,7 +2818,7 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                             MediaMetadataRetriever().apply { setDataSource(this@AfterEffectsStudioActivity, uri) }
                         } else null
 
-                        val exportCfg = aeConfig.copy(isGuideGridEnabled = false)
+                        val exportCfg = aeConfig.copy(isGuideGridEnabled = false).apply { bgCustomBitmap = aeConfig.bgCustomBitmap }
                         var lastDecodedFrame: Bitmap = base
 
                         for (f in 0 until totalFrames) {
@@ -2902,7 +2978,13 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             "📷 3D Camera Depth of Field",
             "📐 Composition Guides & Safe Margins",
             "📸 Snapshot Frame ke Clipboard",
-            "⚙️ Pengaturan Komposisi (Resolusi, Rasio, Durasi)"
+            "⚙️ Pengaturan Komposisi (Resolusi, Rasio, Durasi)",
+            "🎨 Latar Belakang / BG Custom",
+            "📐 Resize & Skala Media",
+            "✂️ Crop & Potong Aspek Rasio",
+            "🔍 Zoom In/Out Preview",
+            "🪞 Flip Cermin (Horizontal/Vertikal)",
+            "📏 Dimensi Komposisi Manual (px/cm/inch)"
         )
 
         AlertDialog.Builder(this)
@@ -2937,6 +3019,12 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
                     25 -> showGuidesDialog()
                     26 -> takeSnapshot()
                     27 -> showCompSettingsDialog()
+                    28 -> showBgCustomDialog()
+                    29 -> showResizeDialog()
+                    30 -> showCropDialog()
+                    31 -> showZoomDialog()
+                    32 -> showFlipDialog()
+                    33 -> showManualSizeDialog()
                 }
             }
             .setNegativeButton("Tutup", null)
@@ -2975,8 +3063,8 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             } else {
                 baseBitmap ?: createFallbackBitmap()
             }
-            val snapshotBmp = Bitmap.createBitmap(currentFrame.width, currentFrame.height, Bitmap.Config.ARGB_8888)
-            val cfgNoGuide = aeConfig.copy(isGuideGridEnabled = false)
+            val cfgNoGuide = aeConfig.copy(isGuideGridEnabled = false).apply { bgCustomBitmap = aeConfig.bgCustomBitmap }
+            val snapshotBmp = Bitmap.createBitmap(cfgNoGuide.compWidth, cfgNoGuide.compHeight, Bitmap.Config.ARGB_8888)
             AfterEffectsRenderer.renderFrame(currentFrame, currentTimeMs, cfgNoGuide, snapshotBmp)
 
             val dir = File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES), "MediaStudioPro_Snapshots")
@@ -3512,6 +3600,8 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
             try { ov.cachedBitmap?.recycle() } catch (_: Exception) {}
             ov.cachedBitmap = null
         }
+        try { aeConfig.bgCustomBitmap?.recycle() } catch (_: Exception) {}
+        aeConfig.bgCustomBitmap = null
         videoSurface?.release()
         videoSurface = null
         videoFrameBitmap?.recycle()
@@ -3521,4 +3611,600 @@ class AfterEffectsStudioActivity : AppCompatActivity() {
         outputBitmapB?.recycle()
         outputBitmapB = null
     }
+
+    // =========================================================================
+    // NEW AFTER EFFECTS STUDIO FEATURES: BG, RESIZE, CROP, ZOOM, FLIP, MANUAL SIZE
+    // =========================================================================
+
+    private fun adjustPreviewZoom(delta: Float) {
+        previewZoomFactor = (previewZoomFactor + delta).coerceIn(0.25f, 4.0f)
+        binding.ivVfxPreview.scaleX = previewZoomFactor
+        binding.ivVfxPreview.scaleY = previewZoomFactor
+        binding.tvPreviewZoomLabel.text = "${(previewZoomFactor * 100).toInt()}%"
+    }
+
+    private fun showZoomDialog() {
+        val options = arrayOf(
+            "🔍 25% (Sangat Kecil)",
+            "🔍 50% (Setengah)",
+            "🔍 75%",
+            "🔍 100% (Ukuran Penuh / Reset)",
+            "🔍 125%",
+            "🔍 150%",
+            "🔍 200% (2x Zoom)",
+            "🔍 300% (3x Detail)",
+            "🔍 400% (4x Maksimal)"
+        )
+        val zooms = floatArrayOf(0.25f, 0.5f, 0.75f, 1.0f, 1.25f, 1.5f, 2.0f, 3.0f, 4.0f)
+        AlertDialog.Builder(this)
+            .setTitle("🔍 Zoom Preview (Hanya Pratinjau)")
+            .setItems(options) { _, which ->
+                previewZoomFactor = zooms[which]
+                binding.ivVfxPreview.scaleX = previewZoomFactor
+                binding.ivVfxPreview.scaleY = previewZoomFactor
+                binding.tvPreviewZoomLabel.text = "${(previewZoomFactor * 100).toInt()}%"
+                Toast.makeText(this, "Zoom preview: ${(previewZoomFactor * 100).toInt()}%", Toast.LENGTH_SHORT).show()
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showFlipDialog() {
+        val statusH = if (aeConfig.isFlipHorizontal) "AKTIF (Cermin)" else "Mati"
+        val statusV = if (aeConfig.isFlipVertical) "AKTIF (Terbalik)" else "Mati"
+        val options = arrayOf(
+            "🪞 Cermin Horizontal (Flip X) [$statusH]",
+            "🔃 Cermin Vertikal (Flip Y) [$statusV]",
+            "🔄 Balik Keduanya (180° Balik Horizontal + Vertikal)",
+            "↺ Reset Semua Cermin (Normal)"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("🪞 Flip & Cermin Media")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        aeConfig.isFlipHorizontal = !aeConfig.isFlipHorizontal
+                        Toast.makeText(this, "Flip Horizontal: ${if (aeConfig.isFlipHorizontal) "AKTIF" else "MATI"}", Toast.LENGTH_SHORT).show()
+                    }
+                    1 -> {
+                        aeConfig.isFlipVertical = !aeConfig.isFlipVertical
+                        Toast.makeText(this, "Flip Vertikal: ${if (aeConfig.isFlipVertical) "AKTIF" else "MATI"}", Toast.LENGTH_SHORT).show()
+                    }
+                    2 -> {
+                        aeConfig.isFlipHorizontal = !aeConfig.isFlipHorizontal
+                        aeConfig.isFlipVertical = !aeConfig.isFlipVertical
+                        Toast.makeText(this, "Balik 180° diterapkan", Toast.LENGTH_SHORT).show()
+                    }
+                    3 -> {
+                        aeConfig.isFlipHorizontal = false
+                        aeConfig.isFlipVertical = false
+                        Toast.makeText(this, "Cermin di-reset ke normal", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showBgCustomDialog() {
+        val currentInfo = when (aeConfig.bgMode) {
+            "GRADIENT" -> "Gradient ${aeConfig.bgGradientPreset}"
+            "BLUR_MEDIA" -> "Blur Media Asli"
+            "CUSTOM_IMAGE" -> "Gambar Galeri Kustom"
+            "TRANSPARENT" -> "Transparan (Alpha)"
+            else -> if (aeConfig.bgColor == Color.BLACK) "Solid Hitam" else "Solid Kustom"
+        }
+        val options = arrayOf(
+            "⬛ Solid Hitam (Standar After Effects)",
+            "⬜ Solid Putih (Clean White Studio)",
+            "🔵 Solid Biru Navy (#0B132B)",
+            "🟢 Solid Hijau Studio (#064E3B)",
+            "🎨 Solid Kustom (Pilih Warna Hex)",
+            "🌅 Gradient: Sunset (Jingga - Ungu)",
+            "🌌 Gradient: Deep Space (Kosmik Nebula)",
+            "💜 Gradient: Cyberpunk (Neon Ungu - Cyan)",
+            "💚 Gradient: Emerald Gold (Hijau - Emas)",
+            "🌸 Gradient: Pastel Dream (Lembut Estetik)",
+            "🎬 Gradient: Dark Studio (Vignette Radial)",
+            "📸 Blur Background Media (Bokeh Fill)",
+            "🖼️ Pilih Gambar dari Galeri (Foto Kustom)",
+            "🔲 Transparan (Alpha Channel / Tanpa Latar)"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("🎨 Latar Belakang / Background [$currentInfo]")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        aeConfig.bgMode = "SOLID_COLOR"
+                        aeConfig.bgColor = Color.BLACK
+                        aeConfig.bgGradientPreset = "NONE"
+                    }
+                    1 -> {
+                        aeConfig.bgMode = "SOLID_COLOR"
+                        aeConfig.bgColor = Color.WHITE
+                        aeConfig.bgGradientPreset = "NONE"
+                    }
+                    2 -> {
+                        aeConfig.bgMode = "SOLID_COLOR"
+                        aeConfig.bgColor = Color.parseColor("#0B132B")
+                        aeConfig.bgGradientPreset = "NONE"
+                    }
+                    3 -> {
+                        aeConfig.bgMode = "SOLID_COLOR"
+                        aeConfig.bgColor = Color.parseColor("#064E3B")
+                        aeConfig.bgGradientPreset = "NONE"
+                    }
+                    4 -> {
+                        showCustomBgColorPicker()
+                        return@setItems
+                    }
+                    5 -> {
+                        aeConfig.bgMode = "GRADIENT"
+                        aeConfig.bgGradientPreset = "SUNSET"
+                    }
+                    6 -> {
+                        aeConfig.bgMode = "GRADIENT"
+                        aeConfig.bgGradientPreset = "DEEP_SPACE"
+                    }
+                    7 -> {
+                        aeConfig.bgMode = "GRADIENT"
+                        aeConfig.bgGradientPreset = "CYBERPUNK"
+                    }
+                    8 -> {
+                        aeConfig.bgMode = "GRADIENT"
+                        aeConfig.bgGradientPreset = "EMERALD_GOLD"
+                    }
+                    9 -> {
+                        aeConfig.bgMode = "GRADIENT"
+                        aeConfig.bgGradientPreset = "PASTEL"
+                    }
+                    10 -> {
+                        aeConfig.bgMode = "GRADIENT"
+                        aeConfig.bgGradientPreset = "STUDIO_DARK"
+                    }
+                    11 -> {
+                        aeConfig.bgMode = "BLUR_MEDIA"
+                    }
+                    12 -> {
+                        pickBgImageLauncher.launch("image/*")
+                        return@setItems
+                    }
+                    13 -> {
+                        aeConfig.bgMode = "TRANSPARENT"
+                    }
+                }
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showCustomBgColorPicker() {
+        val hexInput = EditText(this).apply {
+            hint = "#RRGGBB (misal: #1E293B atau #FF5722)"
+            setText(String.format("#%06X", 0xFFFFFF and aeConfig.bgColor))
+        }
+        AlertDialog.Builder(this)
+            .setTitle("Warna Solid Kustom (Hex)")
+            .setView(hexInput)
+            .setPositiveButton("Terapkan") { _, _ ->
+                try {
+                    val raw = hexInput.text.toString().trim()
+                    val hex = if (raw.startsWith("#")) raw else "#$raw"
+                    val parsed = Color.parseColor(hex)
+                    aeConfig.bgMode = "SOLID_COLOR"
+                    aeConfig.bgColor = parsed
+                    aeConfig.bgGradientPreset = "NONE"
+                    Toast.makeText(this, "Warna background: $hex", Toast.LENGTH_SHORT).show()
+                    updateBadge()
+                    updatePreview()
+                } catch (e: Exception) {
+                    Toast.makeText(this, "Format hex tidak valid (contoh: #FF5722)", Toast.LENGTH_SHORT).show()
+                }
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showResizeDialog() {
+        val currentScalePct = (aeConfig.baseMediaScale * 100).toInt()
+        val options = arrayOf(
+            "📐 Mode Fit (Pas Proporsional - Layar Utuh) [Aktif: ${aeConfig.baseMediaFitMode == "FIT"}]",
+            "📺 Mode Fill (Penuh Layar - Pangkas Sisi) [Aktif: ${aeConfig.baseMediaFitMode == "FILL"}]",
+            "↔️ Mode Stretch (Regangkan Penuh Dimensi) [Aktif: ${aeConfig.baseMediaFitMode == "STRETCH"}]",
+            "🛠️ Mode Custom Skala & Posisi [Aktif: ${aeConfig.baseMediaFitMode == "CUSTOM"}]",
+            "🎚️ Geser Skala Media via Slider (Saat ini: $currentScalePct%)",
+            "🔍 Skala Cepat: 50% (Setengah)",
+            "🔍 Skala Cepat: 75%",
+            "🔍 Skala Cepat: 100% (Ukuran Normal)",
+            "🔍 Skala Cepat: 125%",
+            "🔍 Skala Cepat: 150%",
+            "🔍 Skala Cepat: 200% (Perbesar 2x)",
+            "🔄 Reset Skala & Posisi Media (100% Tengah)"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("📐 Resize & Skala Media (${aeConfig.baseMediaFitMode} - $currentScalePct%)")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> aeConfig.baseMediaFitMode = "FIT"
+                    1 -> aeConfig.baseMediaFitMode = "FILL"
+                    2 -> aeConfig.baseMediaFitMode = "STRETCH"
+                    3 -> aeConfig.baseMediaFitMode = "CUSTOM"
+                    4 -> {
+                        activeSlider = ActiveVfxSlider.RESIZE_SCALE
+                        val sliderVal = (aeConfig.baseMediaScale * 50f).coerceIn(5f, 100f)
+                        updateSliderUI("Skala Media", sliderVal.toInt())
+                        binding.tvVfxToolValue.text = "${(aeConfig.baseMediaScale * 100).toInt()}%"
+                        Toast.makeText(this, "Gunakan slider di bawah untuk mengatur skala", Toast.LENGTH_SHORT).show()
+                        return@setItems
+                    }
+                    5 -> aeConfig.baseMediaScale = 0.5f
+                    6 -> aeConfig.baseMediaScale = 0.75f
+                    7 -> aeConfig.baseMediaScale = 1.0f
+                    8 -> aeConfig.baseMediaScale = 1.25f
+                    9 -> aeConfig.baseMediaScale = 1.5f
+                    10 -> aeConfig.baseMediaScale = 2.0f
+                    11 -> {
+                        aeConfig.baseMediaFitMode = "FIT"
+                        aeConfig.baseMediaScale = 1.0f
+                        aeConfig.baseMediaOffsetX = 0f
+                        aeConfig.baseMediaOffsetY = 0f
+                        Toast.makeText(this, "Skala & posisi di-reset", Toast.LENGTH_SHORT).show()
+                    }
+                }
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showCropDialog() {
+        val currentPreset = if (aeConfig.isCropEnabled) aeConfig.cropAspectRatioPreset else "MATI (Penuh)"
+        val options = arrayOf(
+            "❌ Matikan Crop (Tampilkan Utuh)",
+            "🔲 Rasio 1:1 Persegi (Square Instagram)",
+            "📱 Rasio 9:16 Vertikal (TikTok / Reels / Shorts)",
+            "🎬 Rasio 16:9 Sinematik Landscape (YouTube)",
+            "📸 Rasio 4:5 Portrait (Instagram Feed Post)",
+            "🎞️ Rasio 21:9 Ultrawide Bioskop",
+            "🖼️ Rasio 3:4 Standar Foto Portrait",
+            "⚙️ Kustom Crop Manual (Input Persentase Kiri, Kanan, Atas, Bawah)"
+        )
+        AlertDialog.Builder(this)
+            .setTitle("✂️ Crop & Pangkas Media [$currentPreset]")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> {
+                        aeConfig.isCropEnabled = false
+                        aeConfig.cropAspectRatioPreset = "NONE"
+                        aeConfig.cropLeftPercent = 0f
+                        aeConfig.cropTopPercent = 0f
+                        aeConfig.cropRightPercent = 1f
+                        aeConfig.cropBottomPercent = 1f
+                        Toast.makeText(this, "Crop dinonaktifkan", Toast.LENGTH_SHORT).show()
+                    }
+                    1 -> applyCropRatio(1.0f, "1:1")
+                    2 -> applyCropRatio(9f / 16f, "9:16")
+                    3 -> applyCropRatio(16f / 9f, "16:9")
+                    4 -> applyCropRatio(4f / 5f, "4:5")
+                    5 -> applyCropRatio(21f / 9f, "21:9")
+                    6 -> applyCropRatio(3f / 4f, "3:4")
+                    7 -> showCustomCropDialog()
+                }
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun applyCropRatio(targetRatio: Float, presetName: String) {
+        val srcW = baseBitmap?.width ?: aeConfig.compWidth
+        val srcH = baseBitmap?.height ?: aeConfig.compHeight
+        if (srcW <= 0 || srcH <= 0) return
+
+        val srcRatio = srcW.toFloat() / srcH.toFloat()
+        if (srcRatio > targetRatio) {
+            val targetW = srcH * targetRatio
+            val cutW = (srcW - targetW) / 2f
+            aeConfig.cropLeftPercent = (cutW / srcW).coerceIn(0f, 0.45f)
+            aeConfig.cropRightPercent = (1f - aeConfig.cropLeftPercent).coerceIn(0.55f, 1f)
+            aeConfig.cropTopPercent = 0f
+            aeConfig.cropBottomPercent = 1f
+        } else {
+            val targetH = srcW / targetRatio
+            val cutH = (srcH - targetH) / 2f
+            aeConfig.cropTopPercent = (cutH / srcH).coerceIn(0f, 0.45f)
+            aeConfig.cropBottomPercent = (1f - aeConfig.cropTopPercent).coerceIn(0.55f, 1f)
+            aeConfig.cropLeftPercent = 0f
+            aeConfig.cropRightPercent = 1f
+        }
+        aeConfig.isCropEnabled = true
+        aeConfig.cropAspectRatioPreset = presetName
+        Toast.makeText(this, "Crop diterapkan: $presetName", Toast.LENGTH_SHORT).show()
+    }
+
+    private fun showCustomCropDialog() {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(50, 20, 50, 10)
+        }
+        val etLeft = EditText(this).apply {
+            hint = "Potong Kiri % (0 - 45)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText("${(aeConfig.cropLeftPercent * 100).toInt()}")
+        }
+        val etRight = EditText(this).apply {
+            hint = "Batas Kanan % (55 - 100)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText("${(aeConfig.cropRightPercent * 100).toInt()}")
+        }
+        val etTop = EditText(this).apply {
+            hint = "Potong Atas % (0 - 45)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText("${(aeConfig.cropTopPercent * 100).toInt()}")
+        }
+        val etBottom = EditText(this).apply {
+            hint = "Batas Bawah % (55 - 100)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText("${(aeConfig.cropBottomPercent * 100).toInt()}")
+        }
+        layout.addView(etLeft)
+        layout.addView(etRight)
+        layout.addView(etTop)
+        layout.addView(etBottom)
+
+        AlertDialog.Builder(this)
+            .setTitle("⚙️ Kustom Crop Manual (%)")
+            .setView(layout)
+            .setPositiveButton("Terapkan") { _, _ ->
+                val l = (etLeft.text.toString().toFloatOrNull() ?: 0f) / 100f
+                val r = (etRight.text.toString().toFloatOrNull() ?: 100f) / 100f
+                val t = (etTop.text.toString().toFloatOrNull() ?: 0f) / 100f
+                val b = (etBottom.text.toString().toFloatOrNull() ?: 100f) / 100f
+                aeConfig.cropLeftPercent = l.coerceIn(0f, 0.45f)
+                aeConfig.cropRightPercent = r.coerceIn(0.55f, 1f)
+                aeConfig.cropTopPercent = t.coerceIn(0f, 0.45f)
+                aeConfig.cropBottomPercent = b.coerceIn(0.55f, 1f)
+                aeConfig.isCropEnabled = true
+                aeConfig.cropAspectRatioPreset = "CUSTOM"
+                Toast.makeText(this, "Crop manual diterapkan", Toast.LENGTH_SHORT).show()
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showManualSizeDialog() {
+        val dpi = aeConfig.compDpi
+        val wCm = String.format(Locale.US, "%.2f", aeConfig.compWidth * 2.54f / dpi)
+        val hCm = String.format(Locale.US, "%.2f", aeConfig.compHeight * 2.54f / dpi)
+        val wInc = String.format(Locale.US, "%.2f", aeConfig.compWidth.toFloat() / dpi)
+        val hInc = String.format(Locale.US, "%.2f", aeConfig.compHeight.toFloat() / dpi)
+
+        val options = arrayOf(
+            "📏 Input Manual dalam Pixel (Saat ini: ${aeConfig.compWidth} × ${aeConfig.compHeight} px)",
+            "📐 Input Manual dalam Centimeter (Saat ini: $wCm × $hCm cm @ ${dpi} DPI)",
+            "📐 Input Manual dalam Inci / Inch (Saat ini: $wInc × $hInc inc @ ${dpi} DPI)",
+            "🖨️ Ubah DPI Cetak / Render (Saat ini: $dpi DPI)",
+            "📑 Preset Cetak A4 (21.0 × 29.7 cm @ 300 DPI = 2480 × 3508 px)",
+            "📑 Preset Cetak A5 (14.8 × 21.0 cm @ 300 DPI = 1748 × 2480 px)",
+            "📑 Preset Foto 4R (4 × 6 inci @ 300 DPI = 1200 × 1800 px)",
+            "📱 Preset TikTok / Reels (1080 × 1920 px)",
+            "🎬 Preset Full HD 16:9 (1920 × 1080 px)",
+            "🎬 Preset 4K UHD 16:9 (3840 × 2160 px)"
+        )
+
+        AlertDialog.Builder(this)
+            .setTitle("📏 Dimensi Komposisi Manual (px / cm / inch)")
+            .setItems(options) { _, which ->
+                when (which) {
+                    0 -> showPixelSizeInputDialog()
+                    1 -> showCmSizeInputDialog()
+                    2 -> showInchSizeInputDialog()
+                    3 -> showDpiSelectorDialog()
+                    4 -> {
+                        aeConfig.compDpi = 300
+                        aeConfig.compWidth = 2480
+                        aeConfig.compHeight = 3508
+                        aeConfig.compUnit = "CM"
+                        Toast.makeText(this, "Ukuran diatur ke A4 (2480 × 3508 px @ 300 DPI)", Toast.LENGTH_SHORT).show()
+                        adjustContainerAspect(aeConfig.compWidth, aeConfig.compHeight)
+                updateBadge()
+                        updatePreview()
+                    }
+                    5 -> {
+                        aeConfig.compDpi = 300
+                        aeConfig.compWidth = 1748
+                        aeConfig.compHeight = 2480
+                        aeConfig.compUnit = "CM"
+                        Toast.makeText(this, "Ukuran diatur ke A5 (1748 × 2480 px @ 300 DPI)", Toast.LENGTH_SHORT).show()
+                        adjustContainerAspect(aeConfig.compWidth, aeConfig.compHeight)
+                updateBadge()
+                        updatePreview()
+                    }
+                    6 -> {
+                        aeConfig.compDpi = 300
+                        aeConfig.compWidth = 1200
+                        aeConfig.compHeight = 1800
+                        aeConfig.compUnit = "INC"
+                        Toast.makeText(this, "Ukuran diatur ke Foto 4R (1200 × 1800 px @ 300 DPI)", Toast.LENGTH_SHORT).show()
+                        adjustContainerAspect(aeConfig.compWidth, aeConfig.compHeight)
+                updateBadge()
+                        updatePreview()
+                    }
+                    7 -> {
+                        aeConfig.compWidth = 1080
+                        aeConfig.compHeight = 1920
+                        aeConfig.compUnit = "PX"
+                        Toast.makeText(this, "Ukuran diatur ke 1080 × 1920 px", Toast.LENGTH_SHORT).show()
+                        adjustContainerAspect(aeConfig.compWidth, aeConfig.compHeight)
+                updateBadge()
+                        updatePreview()
+                    }
+                    8 -> {
+                        aeConfig.compWidth = 1920
+                        aeConfig.compHeight = 1080
+                        aeConfig.compUnit = "PX"
+                        Toast.makeText(this, "Ukuran diatur ke 1920 × 1080 px", Toast.LENGTH_SHORT).show()
+                        adjustContainerAspect(aeConfig.compWidth, aeConfig.compHeight)
+                updateBadge()
+                        updatePreview()
+                    }
+                    9 -> {
+                        aeConfig.compWidth = 3840
+                        aeConfig.compHeight = 2160
+                        aeConfig.compUnit = "PX"
+                        Toast.makeText(this, "Ukuran diatur ke 3840 × 2160 px", Toast.LENGTH_SHORT).show()
+                        adjustContainerAspect(aeConfig.compWidth, aeConfig.compHeight)
+                updateBadge()
+                        updatePreview()
+                    }
+                }
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
+    private fun showPixelSizeInputDialog() {
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(50, 20, 50, 10)
+        }
+        val etW = EditText(this).apply {
+            hint = "Lebar (Width) dalam Pixel"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            setText("${aeConfig.compWidth}")
+        }
+        val etH = EditText(this).apply {
+            hint = "Tinggi (Height) dalam Pixel"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER
+            setText("${aeConfig.compHeight}")
+        }
+        layout.addView(etW)
+        layout.addView(etH)
+
+        AlertDialog.Builder(this)
+            .setTitle("Input Dimensi Pixel (px)")
+            .setView(layout)
+            .setPositiveButton("Simpan") { _, _ ->
+                val w = etW.text.toString().toIntOrNull() ?: aeConfig.compWidth
+                val h = etH.text.toString().toIntOrNull() ?: aeConfig.compHeight
+                aeConfig.compWidth = w.coerceIn(128, 8192)
+                aeConfig.compHeight = h.coerceIn(128, 8192)
+                aeConfig.compUnit = "PX"
+                Toast.makeText(this, "Ukuran: ${aeConfig.compWidth} × ${aeConfig.compHeight} px", Toast.LENGTH_SHORT).show()
+                adjustContainerAspect(aeConfig.compWidth, aeConfig.compHeight)
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showCmSizeInputDialog() {
+        val dpi = aeConfig.compDpi
+        val curW = String.format(Locale.US, "%.2f", aeConfig.compWidth * 2.54f / dpi)
+        val curH = String.format(Locale.US, "%.2f", aeConfig.compHeight * 2.54f / dpi)
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(50, 20, 50, 10)
+        }
+        val etW = EditText(this).apply {
+            hint = "Lebar (Width) dalam cm (misal: 21.0)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText(curW)
+        }
+        val etH = EditText(this).apply {
+            hint = "Tinggi (Height) dalam cm (misal: 29.7)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText(curH)
+        }
+        layout.addView(etW)
+        layout.addView(etH)
+
+        AlertDialog.Builder(this)
+            .setTitle("Input Dimensi Centimeter (cm @ ${dpi} DPI)")
+            .setView(layout)
+            .setPositiveButton("Simpan") { _, _ ->
+                val wCm = etW.text.toString().toFloatOrNull() ?: 21.0f
+                val hCm = etH.text.toString().toFloatOrNull() ?: 29.7f
+                val wPx = (wCm / 2.54f * dpi).toInt().coerceIn(128, 8192)
+                val hPx = (hCm / 2.54f * dpi).toInt().coerceIn(128, 8192)
+                aeConfig.compWidth = wPx
+                aeConfig.compHeight = hPx
+                aeConfig.compUnit = "CM"
+                Toast.makeText(this, "Ukuran diubah: $wCm × $hCm cm ($wPx × $hPx px)", Toast.LENGTH_SHORT).show()
+                adjustContainerAspect(aeConfig.compWidth, aeConfig.compHeight)
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showInchSizeInputDialog() {
+        val dpi = aeConfig.compDpi
+        val curW = String.format(Locale.US, "%.2f", aeConfig.compWidth.toFloat() / dpi)
+        val curH = String.format(Locale.US, "%.2f", aeConfig.compHeight.toFloat() / dpi)
+
+        val layout = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(50, 20, 50, 10)
+        }
+        val etW = EditText(this).apply {
+            hint = "Lebar (Width) dalam inci (misal: 4.0)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText(curW)
+        }
+        val etH = EditText(this).apply {
+            hint = "Tinggi (Height) dalam inci (misal: 6.0)"
+            inputType = android.text.InputType.TYPE_CLASS_NUMBER or android.text.InputType.TYPE_NUMBER_FLAG_DECIMAL
+            setText(curH)
+        }
+        layout.addView(etW)
+        layout.addView(etH)
+
+        AlertDialog.Builder(this)
+            .setTitle("Input Dimensi Inci (inch @ ${dpi} DPI)")
+            .setView(layout)
+            .setPositiveButton("Simpan") { _, _ ->
+                val wInc = etW.text.toString().toFloatOrNull() ?: 4.0f
+                val hInc = etH.text.toString().toFloatOrNull() ?: 6.0f
+                val wPx = (wInc * dpi).toInt().coerceIn(128, 8192)
+                val hPx = (hInc * dpi).toInt().coerceIn(128, 8192)
+                aeConfig.compWidth = wPx
+                aeConfig.compHeight = hPx
+                aeConfig.compUnit = "INC"
+                Toast.makeText(this, "Ukuran diubah: $wInc × $hInc inci ($wPx × $hPx px)", Toast.LENGTH_SHORT).show()
+                adjustContainerAspect(aeConfig.compWidth, aeConfig.compHeight)
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Batal", null)
+            .show()
+    }
+
+    private fun showDpiSelectorDialog() {
+        val dpiOptions = arrayOf("72 DPI (Web / Layar Standar)", "150 DPI (Draft Cetak)", "300 DPI (Cetak Resolusi Tinggi - Rekomendasi)", "600 DPI (Ultra Tajam)")
+        val dpis = intArrayOf(72, 150, 300, 600)
+
+        AlertDialog.Builder(this)
+            .setTitle("Pilih DPI Komposisi")
+            .setItems(dpiOptions) { _, which ->
+                aeConfig.compDpi = dpis[which]
+                Toast.makeText(this, "DPI diatur: ${aeConfig.compDpi} DPI", Toast.LENGTH_SHORT).show()
+                updateBadge()
+                updatePreview()
+            }
+            .setNegativeButton("Tutup", null)
+            .show()
+    }
+
 }

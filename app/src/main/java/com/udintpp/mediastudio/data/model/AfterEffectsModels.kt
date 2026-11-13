@@ -332,11 +332,39 @@ data class AeMediaOverlay(
 )
 
 data class AeConfig(
-    // Composition Settings (Custom Durasi, Resolusi & Rasio)
+    // Composition Settings (Custom Durasi, Resolusi, Rasio, Dimensi Manual px, cm, inch)
     var compDurationMs: Long = 5000L,
     var compWidth: Int = 1920,
     var compHeight: Int = 1080,
     var compAspectRatio: String = "16:9", // "16:9", "9:16", "1:1", "4:5", "21:9", "CUSTOM"
+    var compDpi: Int = 300,               // DPI konversi cetak/layar (72, 150, 300)
+    var compUnit: String = "PX",          // "PX", "CM", "INC"
+
+    // Background Layer (BG Custom)
+    var bgMode: String = "SOLID_COLOR",   // "SOLID_COLOR", "GRADIENT", "BLUR_MEDIA", "CUSTOM_IMAGE", "TRANSPARENT"
+    var bgColor: Int = Color.BLACK,
+    var bgGradientPreset: String = "NONE", // "NONE", "STUDIO_DARK", "SUNSET", "CYBERPUNK", "EMERALD_GOLD", "DEEP_SPACE", "PASTEL"
+    var bgCustomImageUri: String? = null,
+    @Transient var bgCustomBitmap: Bitmap? = null,
+    var bgBlurRadius: Float = 25f,        // Radius blur untuk background blur-fill
+
+    // Base Media Transform (Resize & Scale)
+    var baseMediaFitMode: String = "FIT", // "FIT", "FILL", "STRETCH", "CUSTOM"
+    var baseMediaScale: Float = 1.0f,     // 0.1x s/d 5.0x
+    var baseMediaOffsetX: Float = 0f,
+    var baseMediaOffsetY: Float = 0f,
+
+    // Base Media Crop
+    var isCropEnabled: Boolean = false,
+    var cropAspectRatioPreset: String = "NONE", // "NONE", "1:1", "16:9", "9:16", "4:5", "21:9", "3:4", "CUSTOM"
+    var cropLeftPercent: Float = 0f,      // 0.0 to 0.45
+    var cropTopPercent: Float = 0f,       // 0.0 to 0.45
+    var cropRightPercent: Float = 1.0f,   // 0.55 to 1.0
+    var cropBottomPercent: Float = 1.0f,  // 0.55 to 1.0
+
+    // Flip / Mirror
+    var isFlipHorizontal: Boolean = false, // Cermin Horizontal X
+    var isFlipVertical: Boolean = false,   // Cermin Vertikal Y
 
     // 3D Layer Switch (After Effects 3D Space)
     var is3DLayerEnabled: Boolean = false,

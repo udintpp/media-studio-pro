@@ -56,8 +56,8 @@ object AfterEffectsRenderer {
         config: AeConfig,
         reusableOutput: Bitmap? = null
     ): Bitmap {
-        val w = src.width
-        val h = src.height
+        val w = if (config.compWidth > 0) config.compWidth else src.width
+        val h = if (config.compHeight > 0) config.compHeight else src.height
 
         val output = if (reusableOutput != null && !reusableOutput.isRecycled && reusableOutput.width == w && reusableOutput.height == h) {
             reusableOutput.eraseColor(Color.TRANSPARENT)
@@ -67,6 +67,35 @@ object AfterEffectsRenderer {
         }
         val canvas = Canvas(output)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+
+        // 0. Render Background Layer (BG Custom: Solid Color, Gradient, Blur Media, Custom Image, Transparent)
+        when (config.bgMode) {
+            "SOLID_COLOR" -> {
+                canvas.drawColor(config.bgColor)
+            }
+            "GRADIENT" -> {
+                renderBackgroundGradient(canvas, w, h, config.bgGradientPreset)
+            }
+            "BLUR_MEDIA" -> {
+                renderBlurredMediaBackground(canvas, src, w, h, config.bgBlurRadius)
+            }
+            "CUSTOM_IMAGE" -> {
+                val bgBmp = config.bgCustomBitmap
+                if (bgBmp != null && !bgBmp.isRecycled) {
+                    val srcR = Rect(0, 0, bgBmp.width, bgBmp.height)
+                    val dstR = Rect(0, 0, w, h)
+                    canvas.drawBitmap(bgBmp, srcR, dstR, paint)
+                } else {
+                    canvas.drawColor(config.bgColor)
+                }
+            }
+            "TRANSPARENT" -> {
+                canvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+            }
+            else -> {
+                canvas.drawColor(config.bgColor)
+            }
+        }
 
         // 1. Evaluate Keyframing (Position, Scale, Rotation, 3D RotX/Y, Opacity)
         val transform = evaluateKeyframeTransform(config.keyframes, timeMs)
@@ -78,13 +107,20 @@ object AfterEffectsRenderer {
             PointF(0f, 0f)
         }
 
-        // Apply transforms to canvas (including 3D Layer Space)
+        // Apply transforms to canvas (including 3D Layer Space, Offset & Flip)
         canvas.save()
         val centerX = w / 2f
         val centerY = h / 2f
-        canvas.translate(centerX + transform.posX + wiggleOffset.x, centerY + transform.posY + wiggleOffset.y)
+        canvas.translate(
+            centerX + transform.posX + wiggleOffset.x + config.baseMediaOffsetX,
+            centerY + transform.posY + wiggleOffset.y + config.baseMediaOffsetY
+        )
         canvas.rotate(transform.rotation)
-        canvas.scale(transform.scale, transform.scale)
+
+        // FLIP (Mirror Horizontal / Vertical)
+        val flipX = if (config.isFlipHorizontal) -1f else 1f
+        val flipY = if (config.isFlipVertical) -1f else 1f
+        canvas.scale(transform.scale * flipX, transform.scale * flipY)
 
         // 3D Perspective Rotation (After Effects 3D Switch)
         if (config.is3DLayerEnabled || transform.rotX != 0f || transform.rotY != 0f) {
@@ -109,16 +145,53 @@ object AfterEffectsRenderer {
         paint.alpha = (transform.opacity * 255).toInt().coerceIn(0, 255)
         paint.xfermode = PorterDuffXfermode(config.blendMode.porterDuffMode)
 
+        // Base Media Source with CROP (if enabled)
+        val processedSrc: Bitmap = if (config.isCropEnabled) {
+            val cl = (config.cropLeftPercent * src.width).toInt().coerceIn(0, src.width - 2)
+            val ct = (config.cropTopPercent * src.height).toInt().coerceIn(0, src.height - 2)
+            val cr = (config.cropRightPercent * src.width).toInt().coerceIn(cl + 2, src.width)
+            val cb = (config.cropBottomPercent * src.height).toInt().coerceIn(ct + 2, src.height)
+            val cropW = max(2, cr - cl)
+            val cropH = max(2, cb - ct)
+            if (cropW < src.width || cropH < src.height) {
+                Bitmap.createBitmap(src, cl, ct, cropW, cropH)
+            } else {
+                src
+            }
+        } else {
+            src
+        }
+
+        // Calculate DstRect for base media with RESIZE & FIT MODE
+        val baseDstRect = calculateBaseMediaDstRect(
+            processedSrc.width, processedSrc.height,
+            w, h,
+            config.baseMediaFitMode,
+            config.baseMediaScale
+        )
+
+        canvas.save()
+        canvas.translate(baseDstRect.left, baseDstRect.top)
+        val scaleW = baseDstRect.width() / processedSrc.width.toFloat()
+        val scaleH = baseDstRect.height() / processedSrc.height.toFloat()
+        canvas.scale(scaleW, scaleH)
+
         // 3. Render Base Video Frame, Flag Wave, Turbulent Displace, or RGB Split Glitch
         if (config.isFlagWaveEnabled) {
-            renderFlagClothWave(canvas, src, w, h, timeMs, config, paint)
+            renderFlagClothWave(canvas, processedSrc, processedSrc.width, processedSrc.height, timeMs, config, paint)
         } else if (config.isRgbGlitchEnabled) {
-            renderRgbGlitch(canvas, src, timeMs, config.glitchIntensity, config.glitchScanlines, paint)
+            renderRgbGlitch(canvas, processedSrc, timeMs, config.glitchIntensity, config.glitchScanlines, paint)
         } else if (config.isTurbulentDisplaceEnabled) {
-            renderTurbulentDisplace(canvas, src, timeMs, config.turbulentAmount, config.turbulentSpeed, paint)
+            renderTurbulentDisplace(canvas, processedSrc, timeMs, config.turbulentAmount, config.turbulentSpeed, paint)
         } else {
-            canvas.drawBitmap(src, 0f, 0f, paint)
+            canvas.drawBitmap(processedSrc, 0f, 0f, paint)
         }
+        canvas.restore()
+
+        if (processedSrc != src) {
+            processedSrc.recycle()
+        }
+
         canvas.restore()
 
         // 4. Optical Deep Glow
@@ -2617,5 +2690,113 @@ object AfterEffectsRenderer {
         }
 
         canvas.drawBitmapMesh(src, meshW, meshH, verts, 0, colors, 0, paint)
+     }
+
+    // --- BG Custom Helpers ---
+    private fun renderBackgroundGradient(canvas: Canvas, w: Int, h: Int, preset: String) {
+        val p = Paint(Paint.ANTI_ALIAS_FLAG)
+        when (preset) {
+            "SUNSET" -> {
+                p.shader = LinearGradient(
+                    0f, 0f, 0f, h.toFloat(),
+                    intArrayOf(Color.parseColor("#FF512F"), Color.parseColor("#F09819"), Color.parseColor("#DD2476")),
+                    null, Shader.TileMode.CLAMP
+                )
+            }
+            "CYBERPUNK" -> {
+                p.shader = LinearGradient(
+                    0f, 0f, w.toFloat(), h.toFloat(),
+                    intArrayOf(Color.parseColor("#7928CA"), Color.parseColor("#4F46E5"), Color.parseColor("#00DFD8")),
+                    null, Shader.TileMode.CLAMP
+                )
+            }
+            "EMERALD_GOLD" -> {
+                p.shader = LinearGradient(
+                    0f, 0f, w.toFloat(), h.toFloat(),
+                    intArrayOf(Color.parseColor("#065F46"), Color.parseColor("#059669"), Color.parseColor("#F59E0B")),
+                    null, Shader.TileMode.CLAMP
+                )
+            }
+            "DEEP_SPACE" -> {
+                val r = max(w, h) * 0.8f
+                p.shader = RadialGradient(
+                    w * 0.5f, h * 0.4f, r,
+                    intArrayOf(Color.parseColor("#312E81"), Color.parseColor("#0F172A"), Color.parseColor("#030712")),
+                    null, Shader.TileMode.CLAMP
+                )
+            }
+            "PASTEL" -> {
+                p.shader = LinearGradient(
+                    0f, 0f, w.toFloat(), h.toFloat(),
+                    intArrayOf(Color.parseColor("#A8EDEA"), Color.parseColor("#FED6E3")),
+                    null, Shader.TileMode.CLAMP
+                )
+            }
+            else -> { // STUDIO_DARK
+                val r = max(w, h) * 0.75f
+                p.shader = RadialGradient(
+                    w * 0.5f, h * 0.45f, r,
+                    intArrayOf(Color.parseColor("#1E293B"), Color.parseColor("#0B132B"), Color.BLACK),
+                    null, Shader.TileMode.CLAMP
+                )
+            }
+        }
+        canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), p)
+    }
+
+    private fun renderBlurredMediaBackground(canvas: Canvas, src: Bitmap, w: Int, h: Int, blurRadius: Float) {
+        val downW = max(32, src.width / 16)
+        val downH = max(32, src.height / 16)
+        val small = Bitmap.createScaledBitmap(src, downW, downH, true)
+        val p = Paint(Paint.FILTER_BITMAP_FLAG or Paint.ANTI_ALIAS_FLAG)
+        val srcR = Rect(0, 0, downW, downH)
+        val dstR = Rect(0, 0, w, h)
+        canvas.drawBitmap(small, srcR, dstR, p)
+        small.recycle()
+
+        // Subtle dark cinematic tint so foreground media pops out
+        val dimPaint = Paint().apply {
+            color = Color.parseColor("#59000000") // 35% black overlay
+        }
+        canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), dimPaint)
+    }
+
+    private fun calculateBaseMediaDstRect(
+        srcW: Int,
+        srcH: Int,
+        compW: Int,
+        compH: Int,
+        fitMode: String,
+        scale: Float
+    ): RectF {
+        if (srcW <= 0 || srcH <= 0 || compW <= 0 || compH <= 0) {
+            return RectF(0f, 0f, compW.toFloat(), compH.toFloat())
+        }
+
+        val dw: Float
+        val dh: Float
+        when (fitMode) {
+            "FILL" -> {
+                val s = max(compW.toFloat() / srcW, compH.toFloat() / srcH) * scale
+                dw = srcW * s
+                dh = srcH * s
+            }
+            "STRETCH" -> {
+                dw = compW.toFloat() * scale
+                dh = compH.toFloat() * scale
+            }
+            "CUSTOM" -> {
+                dw = srcW.toFloat() * scale
+                dh = srcH.toFloat() * scale
+            }
+            else -> { // "FIT"
+                val s = min(compW.toFloat() / srcW, compH.toFloat() / srcH) * scale
+                dw = srcW * s
+                dh = srcH * s
+            }
+        }
+        val left = (compW - dw) / 2f
+        val top = (compH - dh) / 2f
+        return RectF(left, top, left + dw, top + dh)
     }
 }

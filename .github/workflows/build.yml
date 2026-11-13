@@ -47,33 +47,51 @@ jobs:
         if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v1.6.0
-          name: "MediaStudio Pro v1.6.0 - Kembang Api Spektakuler & Realistic Pyrotechnic Simulation"
+          tag_name: v1.7.0
+          name: "MediaStudio Pro v1.7.0 - After Effects Studio: BG Custom, Resize, Crop, Zoom, Flip & Manual Size (px/cm/inch)"
           body: |
-            ## 🎆 MediaStudio Pro v1.6.0 — Simulasi Kembang Api Alami & Spektakuler
+            ## 🎨 MediaStudio Pro v1.7.0 — Fitur After Effects Studio Terlengkap!
 
-            Pembaruan **v1.6.0** menghadirkan perombakan total mesin partikel kembang api menjadi simulasi piroteknik realistis berskala besar:
+            Pembaruan **v1.7.0** melengkapi After Effects Studio di MediaStudio Pro dengan kendali komposisi tingkat profesional:
 
             ---
 
-            ### 🚀 Fitur Baru & Peningkatan di v1.6.0:
+            ### 🚀 Fitur Baru & Peningkatan di v1.7.0:
 
-            1. 🎆 **Simulasi Piroteknik Kembang Api Alami (Bebas Efek Kartun):**
-               - **Jejak Ekor Cahaya Sejati (Luminous Motion Streaks / Comet Tails):** Menggantikan titik lingkaran kartun dengan garis berkilau dinamis mengikuti vektor kecepatan partikel dan waktu rana alami.
-               - **Inti Pijar Bersuhu Tinggi (Incandescent White-Hot Core):** Setiap butir kembang api memiliki inti putih menyala diiringi pendaran halasi warna kimia piroteknik (Strontium Red, Copper Cyan, Barium Green, Cesium Violet, Sodium Gold, Silver Titanium).
-               - **Fisika Balistik Aerodinamis:** Ledakan ekspansi cepat seketika yang kemudian melambat anggun akibat hambatan udara (drag resistance).
-               - **Lengkungan Gravitasi Weeping Willow / Kamuro:** Percikan api melengkung jatuh ke bawah secara alami menyerupai air terjun emas kembang api kelas dunia.
+            1. 🎨 **Latar Belakang / Background Kustom (BG Custom):**
+               - **Warna Solid:** Hitam pekat, Putih studio, Biru navy, Hijau studio, dan pemilih warna custom via kode Hex (#RRGGBB).
+               - **Preset Gradasi Estetik:** Sunset (Jingga-Ungu), Deep Space (Kosmik Nebula), Cyberpunk (Neon Ungu-Cyan), Emerald Gold (Hijau Zamrud-Emas), Pastel Dream, dan Dark Studio.
+               - **Blur Media Asli (Bokeh Background Fill):** Efek estetik kekinian mengisi latar hitam dengan versi blur halus dari video/foto utama.
+               - **Gambar Galeri Kustom:** Pasang foto apa pun dari galeri smartphone sebagai latar belakang komposisi.
+               - **Transparan (Alpha Channel / PNG Canvas):** Komposisi tanpa latar untuk keperluan masking & overlay.
 
-            2. 🌌 **Percikan Ekstra Lebar (Screen-Filling Spread):**
-               - Radius ledakan ditingkatkan drastis mencapai 35% s/d 55% dari lebar/tinggi layar (diameter mencapai 800px – 1200px pada layar Full HD), memenuhi langit malam dengan megah.
+            2. 📐 **Resize & Skala Media (Fit, Fill, Stretch, Custom):**
+               - **Fit Mode:** Tampilkan utuh proporsional tanpa terpotong.
+               - **Fill Mode:** Penuhi seluruh kanvas layar.
+               - **Stretch Mode:** Regangkan tepat memenuhi batas kanvas.
+               - **Custom Skala:** Geser slider skala bebas dari 10% s/d 300% atau pilih preset instan (50%, 75%, 100%, 125%, 150%, 200%).
+               - **Reset Posisi & Skala:** Kembali ke posisi tengah 100% dengan satu sentuhan.
 
-            3. 💥 **Koreografi Multi-Shell & Bintang Crackles ("Dragon Eggs"):**
-               - Koreografi 3 hingga 8 selongsong roket kembang api simultan yang meluncur bergantian dari bawah dengan asap dorong pijar.
-               - Kilauan bintang pecah berkeretak (scintillating crackles / time-rain popping) pada fase akhir ledakan bunga api.
-               - Konstruksi selongsong multi-lapis: Peony luar berkecepatan tinggi dengan inti pistil emas kontras di tengah.
+            3. ✂️ **Crop & Potong Aspek Rasio:**
+               - Potong video/gambar langsung di After Effects Studio.
+               - **Preset Rasio Populer:** 1:1 Persegi (Instagram Feed), 9:16 Vertikal (TikTok/Reels/Shorts), 16:9 Sinematik Landscape (YouTube), 4:5 Portrait, 21:9 Ultrawide Bioskop, 3:4 Portrait Foto.
+               - **Kustom Crop Manual:** Tentukan persentase potongan Kiri, Kanan, Atas, dan Bawah secara presisi.
 
-            4. ⚡ **Performa & 60 FPS Export:**
-               - Rendering efisien tanpa beban garbage collection dengan objek canvas paint teroptimasi.
+            4. 🔍 **Zoom In / Out Pratinjau Kanvas:**
+               - Kontrol floating zoom di pojok kanan atas kanvas (+, -, dan persentase zoom).
+               - Zoom pratinjau fleksibel dari 25% hingga 400% untuk memeriksa detail partikel, teks, dan efek mikro.
+               - Sentuh label zoom atau tombol toolbar untuk membuka dialog pilihan zoom cepat atau reset ke 100%.
+
+            5. 🪞 **Flip & Cermin Media:**
+               - **Flip Horizontal (Cermin Kiri-Kanan / Sumbu X).**
+               - **Flip Vertikal (Cermin Atas-Bawah / Sumbu Y).**
+               - **Balik Keduanya (Rotasi cermin 180°).**
+               - **Reset Cermin** kembali ke tampilan asli.
+
+            6. 📏 **Dimensi Komposisi Manual (Pixel, CM, Inci dengan DPI):**
+               - Tentukan ukuran kanvas secara manual menggunakan satuan **Pixel (PX)**, **Centimeter (CM)**, atau **Inci (INC)**.
+               - **Kalkulasi Akurat DPI:** Dukungan DPI layar & cetak (72 DPI Web, 150 DPI Draft, 300 DPI High-Res Cetak, 600 DPI Ultra).
+               - **Preset Cetak Standar:** A4 Print (21.0 × 29.7 cm @ 300 DPI = 2480 × 3508 px), A5 Print (14.8 × 21.0 cm), Foto 4R (4 × 6 inci), TikTok/Reels (1080 × 1920), Full HD (1920 × 1080), 4K UHD (3840 × 2160).
 
             ---
 

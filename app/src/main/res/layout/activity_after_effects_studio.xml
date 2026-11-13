@@ -117,6 +117,53 @@
             android:textSize="11sp"
             android:textStyle="bold" />
 
+        <!-- Floating Zoom In / Out Controls -->
+        <LinearLayout
+            android:id="@+id/layout_zoom_controls"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="top|end"
+            android:layout_margin="12dp"
+            android:background="@drawable/bg_pill_button"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="6dp"
+            android:paddingEnd="6dp"
+            android:paddingTop="2dp"
+            android:paddingBottom="2dp">
+
+            <TextView
+                android:id="@+id/btn_preview_zoom_out"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:gravity="center"
+                android:text="−"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/tv_preview_zoom_label"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:text="100%"
+                android:textColor="@color/accent_cyan"
+                android:textSize="11sp"
+                android:textStyle="bold" />
+
+            <TextView
+                android:id="@+id/btn_preview_zoom_in"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:gravity="center"
+                android:text="+"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold" />
+        </LinearLayout>
+
         <!-- Export Progress Overlay -->
         <LinearLayout
             android:id="@+id/layout_vfx_export_progress"
@@ -349,6 +396,66 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal">
+
+                <Button
+                    android:id="@+id/btn_vfx_bg_custom"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🎨 Latar Belakang / BG"
+                    android:textColor="#38BDF8"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_resize"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="📐 Resize &amp; Skala"
+                    android:textColor="#34D399"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_crop"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="✂️ Crop &amp; Potong"
+                    android:textColor="#F59E0B"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_zoom"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🔍 Zoom In/Out"
+                    android:textColor="#A78BFA"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_flip"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="🪞 Flip Cermin"
+                    android:textColor="#F472B6"
+                    android:textSize="11sp" />
+
+                <Button
+                    android:id="@+id/btn_vfx_manual_size"
+                    style="@style/Widget.Material3.Button.TonalButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="40dp"
+                    android:layout_marginEnd="6dp"
+                    android:text="📏 Ukuran (px/cm/inc)"
+                    android:textColor="@color/accent_cyan"
+                    android:textSize="11sp" />
 
                 <Button
                     android:id="@+id/btn_vfx_3d_layer"
