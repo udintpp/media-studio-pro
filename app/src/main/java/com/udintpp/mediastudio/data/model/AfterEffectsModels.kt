@@ -1,5 +1,6 @@
 package com.udintpp.mediastudio.data.model
 
+import android.graphics.Bitmap
 import android.graphics.Color
 import android.graphics.PorterDuff
 
